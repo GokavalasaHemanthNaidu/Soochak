@@ -5,10 +5,17 @@ import pytest
 import pytest_asyncio
 import aiosqlite
 
+from src.middleware.rate_limiter import rate_limiter
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    rate_limiter.ip_records.clear()
+
 @pytest_asyncio.fixture
 async def test_db():
     fd, path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
+    os.environ["DB_PATH"] = path
     
     db = await aiosqlite.connect(path)
     await db.execute("PRAGMA journal_mode=WAL")

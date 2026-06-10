@@ -19,10 +19,14 @@ Welcome to the SOOCHAK workspace! All AI models/agents MUST adhere to these rule
 - **Modularity:** Keep functions small and modular. Do not dump all code into a single file. Follow the established directory structure in `ARCHITECTURE.md`.
 - **Comments:** Add descriptive docstrings and comments for complex logic. Do not remove existing comments unless instructed.
 
-## 3. Modifying State
+## 3. Naming Conventions (CRITICAL)
+- **Project Name:** The project was renamed from RoadRisk to **SOOCHAK**. You MUST use the name `SOOCHAK` (or `soochak` / `Soochak`) in all code, comments, documentation, API keys, URLs, and variables. 
+  - Examples: Use `soochak-demo-2024` (NOT `roadrisk-demo-2024`), `https://soochak.onrender.com` (NOT `roadrisk.onrender.com`), etc.
+  - DO NOT use the word RoadRisk anywhere unless explicitly instructed.
+## 4. Modifying State
 - When you complete a task, you MUST update `TODO.md` by moving the task to the 'Completed' section and updating the 'Current Status'.
 - Do not make massive sweeping changes across multiple directories without explicit user approval.
 
-## 4. Environment
+## 5. Environment
 - The OS is Windows. Use PowerShell commands.
 - A virtual environment is located at `.\venv`. Always ensure dependencies are installed here.
