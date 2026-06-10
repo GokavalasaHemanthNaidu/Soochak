@@ -1,0 +1,7 @@
+# Treat model artifacts as binary to avoid diff bloat
+*.onnx binary
+*.pkl binary
+*.json text eol=lf
+*.sql text eol=lf
+*.py text eol=lf
+*.md text eol=lf
