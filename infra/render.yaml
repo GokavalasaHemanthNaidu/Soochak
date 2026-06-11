@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: soochak
+    runtime: docker
+    plan: free
+    dockerfilePath: ./infra/Dockerfile
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: DEMO_API_KEY
+        value: soochak-demo-2024
+      - key: MODEL_VERSION
+        value: v1.0.0
+      - key: DB_PATH
+        value: ./data/soochak.db
+      - key: RATE_LIMIT_RPM
+        value: "30"
+      - key: MAX_BATCH_SIZE
+        value: "1000"
+    healthCheckPath: /v1/health
