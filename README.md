@@ -1,6 +1,6 @@
 # SOOCHAK: Explainable Road Accident Severity Predictor + Intervention Simulator
 
-**Live Demo**: [https://soochak.onrender.com](https://soochak.onrender.com) *(Placeholder)*
+**Live Demo**: [https://soochak.onrender.com](https://soochak.onrender.com)
 
 SOOCHAK predicts fatal road accidents using real India FIR data, explains the predictions using SHAP, and simulates what-if interventions (e.g., adding a divider) to prevent them. Designed for a zero-cost Render deployment.
 
