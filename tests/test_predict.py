@@ -3,17 +3,18 @@ from httpx import AsyncClient, ASGITransport
 from src.api.main import app
 from src.api.dependencies import get_db_dependency
 
+
 @pytest.fixture
 async def client(test_db):
     async def _override():
         yield test_db
+
     app.dependency_overrides[get_db_dependency] = _override
-    
-    from httpx import AsyncClient, ASGITransport
+
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
-        
+
     app.dependency_overrides.clear()
 
 
@@ -31,7 +32,7 @@ async def test_predict_with_real_inference(client, test_db):
         "Driver_Age": "Under 18",
         "Urban_Rural": "Rural village areas",
         "State": "Steep grade upward with mountainous terrain",
-        "City": "Saturday"
+        "City": "Saturday",
     }
     response = await client.post("/v1/predict/", json=payload, headers=headers)
     assert response.status_code == 200
@@ -59,12 +60,14 @@ async def test_explain_endpoint(client, test_db):
         "Driver_Age": "Under 18",
         "Urban_Rural": "Rural village areas",
         "State": "Steep grade upward with mountainous terrain",
-        "City": "Saturday"
+        "City": "Saturday",
     }
     pred_response = await client.post("/v1/predict/", json=payload, headers=headers)
     prediction_id = pred_response.json()["prediction_id"]
 
-    explain_response = await client.post("/v1/explain", json={"prediction_id": prediction_id}, headers=headers)
+    explain_response = await client.post(
+        "/v1/explain", json={"prediction_id": prediction_id}, headers=headers
+    )
     assert explain_response.status_code == 200
     data = explain_response.json()
     assert "groq_explanation" in data
@@ -74,6 +77,7 @@ async def test_explain_endpoint(client, test_db):
 @pytest.mark.asyncio
 async def test_batch_prediction_flow(client):
     import asyncio
+
     headers = {"X-API-Key": "soochak-demo-2024"}
     payload = {
         "incidents": [
@@ -88,7 +92,7 @@ async def test_batch_prediction_flow(client):
                 "Driver_Age": "Under 18",
                 "Urban_Rural": "Rural village areas",
                 "State": "Steep grade upward with mountainous terrain",
-                "City": "Saturday"
+                "City": "Saturday",
             }
         ]
     }
@@ -111,7 +115,7 @@ async def test_batch_prediction_flow(client):
     poll_response = await client.get(f"/v1/batch/tasks/{task_id}", headers=headers)
     assert poll_response.status_code == 200
     poll_data = poll_response.json()
-    
+
     # Check results URL or completed results
     if poll_data["status"] == "complete":
         results_response = await client.get(f"/v1/batch/tasks/{task_id}/results", headers=headers)
@@ -119,4 +123,3 @@ async def test_batch_prediction_flow(client):
         results_data = results_response.json()
         assert len(results_data) == 1
         assert "probability" in results_data[0]
-

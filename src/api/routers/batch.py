@@ -1,6 +1,6 @@
 """Batch prediction and task status endpoints."""
 
-from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
+from fastapi import APIRouter, HTTPException
 from src.models.request import BatchPredictRequest
 from src.models.response import BatchStatusResponse
 from src.services.batch_service import create_task, get_task_status
@@ -22,10 +22,7 @@ async def batch_predict(
     estimated_seconds = max(1, len(incidents) * 0.1)
 
     return BatchStatusResponse(
-        task_id=task_id,
-        status="queued",
-        progress_pct=0.0,
-        estimated_seconds=int(estimated_seconds)
+        task_id=task_id, status="queued", progress_pct=0.0, estimated_seconds=int(estimated_seconds)
     )
 
 
@@ -41,7 +38,7 @@ async def get_task(task_id: str):
         status=task["status"],
         progress_pct=task["progress_pct"],
         results_url=f"/v1/batch/tasks/{task_id}/results" if task["status"] == "complete" else None,
-        estimated_seconds=None
+        estimated_seconds=None,
     )
 
 

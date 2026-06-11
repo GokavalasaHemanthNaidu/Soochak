@@ -7,21 +7,23 @@ import aiosqlite
 
 from src.middleware.rate_limiter import rate_limiter
 
+
 @pytest.fixture(autouse=True)
 def reset_rate_limiter():
     rate_limiter.ip_records.clear()
+
 
 @pytest_asyncio.fixture
 async def test_db():
     fd, path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
     os.environ["DB_PATH"] = path
-    
+
     db = await aiosqlite.connect(path)
     await db.execute("PRAGMA journal_mode=WAL")
     await db.execute("PRAGMA foreign_keys=ON")
     db.row_factory = aiosqlite.Row
-    
+
     # Load migrations
     migration_files = sorted(glob.glob("src/db/migrations/*.sql"))
     for file in migration_files:
@@ -29,11 +31,11 @@ async def test_db():
             sql_script = f.read()
         await db.executescript(sql_script)
     await db.commit()
-    
+
     yield db
-    
+
     await db.close()
-    
+
     # Cleanup files
     try:
         os.unlink(path)

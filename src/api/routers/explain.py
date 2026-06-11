@@ -12,10 +12,7 @@ router = APIRouter(tags=["Explanation"])
 
 
 @router.post("/explain", response_model=ExplainResponse)
-async def explain(
-    request: ExplainRequest,
-    db: aiosqlite.Connection = Depends(get_db_dependency)
-):
+async def explain(request: ExplainRequest, db: aiosqlite.Connection = Depends(get_db_dependency)):
     """Generate LLM explanation for a prediction."""
     async with db.execute(
         "SELECT * FROM predictions WHERE id = ?", (request.prediction_id,)
@@ -31,23 +28,23 @@ async def explain(
         return ExplainResponse(
             groq_explanation=pred["groq_explanation"],
             top_features=top_features,
-            recommendation="See explanation above."
+            recommendation="See explanation above.",
         )
 
     explanation = await explain_prediction(
         top_features=top_features,
         probability=pred["probability"],
-        predicted_class=pred["predicted_class"]
+        predicted_class=pred["predicted_class"],
     )
 
     await db.execute(
         "UPDATE predictions SET groq_explanation = ? WHERE id = ?",
-        (explanation, request.prediction_id)
+        (explanation, request.prediction_id),
     )
     await db.commit()
 
     return ExplainResponse(
         groq_explanation=explanation,
         top_features=top_features,
-        recommendation="See explanation above."
+        recommendation="See explanation above.",
     )

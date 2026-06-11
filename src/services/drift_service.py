@@ -6,7 +6,9 @@ from scipy import stats
 from datetime import datetime
 from typing import List, Dict
 
-DISTRIBUTION_PATH = Path(__file__).parent.parent.parent / "ml_artifacts" / "training_distribution_encoded.pkl"
+DISTRIBUTION_PATH = (
+    Path(__file__).parent.parent.parent / "ml_artifacts" / "training_distribution_encoded.pkl"
+)
 
 with open(DISTRIBUTION_PATH, "rb") as f:
     TRAINING_DIST = pickle.load(f)
@@ -33,11 +35,13 @@ def detect_drift(live_features: List[dict]) -> Dict:
         if drift_detected:
             overall_drift = True
 
-        results.append({
-            "feature": feature_name,
-            "p_value": round(p_value, 4),
-            "drifted": drift_detected,
-        })
+        results.append(
+            {
+                "feature": feature_name,
+                "p_value": round(p_value, 4),
+                "drifted": drift_detected,
+            }
+        )
 
     return {
         "overall_drift": overall_drift,

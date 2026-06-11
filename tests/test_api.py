@@ -4,17 +4,20 @@ from src.api.main import app
 
 from src.api.dependencies import get_db_dependency
 
+
 @pytest.fixture
 async def client(test_db):
     async def _override():
         yield test_db
+
     app.dependency_overrides[get_db_dependency] = _override
-    
+
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
-        
+
     app.dependency_overrides.clear()
+
 
 @pytest.mark.asyncio
 async def test_health_endpoint(client, test_db):
@@ -24,10 +27,11 @@ async def test_health_endpoint(client, test_db):
     assert data["status"] in ["ok", "degraded", "healthy"]
     assert "db_connected" in data
 
+
 @pytest.mark.asyncio
 async def test_predict_endpoint(client, test_db):
     headers = {"X-API-Key": "soochak-demo-2024"}
-    
+
     payload = {
         "Road_Type": "Undivided Two way",
         "Speed_Limit": 80,
@@ -39,7 +43,7 @@ async def test_predict_endpoint(client, test_db):
         "Driver_Age": "Under 18",
         "Urban_Rural": "Rural village areas",
         "State": "Steep grade upward with mountainous terrain",
-        "City": "Saturday"
+        "City": "Saturday",
     }
     response = await client.post("/v1/predict/", json=payload, headers=headers)
     assert response.status_code == 200
@@ -50,10 +54,11 @@ async def test_predict_endpoint(client, test_db):
     assert "confidence" in data
     assert "threshold_used" in data
 
+
 @pytest.mark.asyncio
 async def test_counterfactual_endpoint(client, test_db):
     headers = {"X-API-Key": "soochak-demo-2024"}
-    
+
     # First insert a mock incident to base the counterfactual on
     await test_db.execute(
         """INSERT INTO incidents (id, road_type, speed_limit, weather, lighting, junction, junction_ctrl, vehicle_type, driver_age, urban_rural, state, city)
@@ -65,11 +70,7 @@ async def test_counterfactual_endpoint(client, test_db):
     )
     await test_db.commit()
 
-    payload = {
-        "incident_id": 1,
-        "feature_to_change": "speed_limit",
-        "new_value": "40"
-    }
+    payload = {"incident_id": 1, "feature_to_change": "speed_limit", "new_value": "40"}
     response = await client.post("/v1/counterfactual", json=payload, headers=headers)
     assert response.status_code == 200
     data = response.json()
@@ -77,6 +78,7 @@ async def test_counterfactual_endpoint(client, test_db):
     assert "original_prob" in data
     assert "new_prob" in data
     assert "interpretation" in data
+
 
 @pytest.mark.asyncio
 async def test_invalid_speed_limit(client, test_db):
@@ -92,10 +94,11 @@ async def test_invalid_speed_limit(client, test_db):
         "Driver_Age": "18-30",
         "Urban_Rural": "Residential areas",
         "State": "Tangent road with flat terrain",
-        "City": "Monday"
+        "City": "Monday",
     }
     response = await client.post("/v1/predict/", json=payload, headers=headers)
     assert response.status_code == 422  # Pydantic validation error
+
 
 @pytest.mark.asyncio
 async def test_xss_sanitization(client, test_db):
@@ -111,12 +114,13 @@ async def test_xss_sanitization(client, test_db):
         "Driver_Age": "Under 18",
         "Urban_Rural": "Rural village areas",
         "State": "Steep grade upward with mountainous terrain",
-        "City": "Saturday"
+        "City": "Saturday",
     }
     response = await client.post("/v1/predict/", json=payload, headers=headers)
     # The XSS should be stripped and it shouldn't crash
     assert response.status_code == 200
-    
+
+
 @pytest.mark.asyncio
 async def test_model_metrics(client, test_db):
     response = await client.get("/v1/model/metrics")
@@ -126,6 +130,7 @@ async def test_model_metrics(client, test_db):
     assert "f1_score" in data
     assert "predictions_today" in data
     assert "cache_hit_rate" in data
+
 
 @pytest.mark.asyncio
 async def test_model_drift(client, test_db):
@@ -149,7 +154,7 @@ async def test_model_drift(client, test_db):
         "Driver_Age": "Under 18",
         "Urban_Rural": "Rural village areas",
         "State": "Steep grade upward with mountainous terrain",
-        "City": "Saturday"
+        "City": "Saturday",
     }
     pred_res = await client.post("/v1/predict/", json=payload, headers=headers)
     assert pred_res.status_code == 200
@@ -162,7 +167,6 @@ async def test_model_drift(client, test_db):
     assert len(data["features"]) > 0
     assert "p_value" in data["features"][0]
     assert "drifted" in data["features"][0]
-
 
 
 @pytest.mark.asyncio
@@ -258,14 +262,9 @@ async def test_feedback_loop(client, test_db):
     )
     await test_db.commit()
 
-    payload = {
-        "prediction_id": 10,
-        "was_correct": 1,
-        "human_label": 1
-    }
+    payload = {"prediction_id": 10, "was_correct": 1, "human_label": 1}
     response = await client.post("/v1/feedback", json=payload, headers=headers)
     assert response.status_code == 200
     data = response.json()
     assert "feedback_id" in data
     assert data["correction_rate_7d"] == 0.0
-

@@ -43,7 +43,7 @@ async def model_metrics(db: aiosqlite.Connection = Depends(get_db_dependency)):
         precision_fatal=prec,
         recall_fatal=rec,
         predictions_today=predictions_today,
-        cache_hit_rate=round(cache_hit_rate, 2)
+        cache_hit_rate=round(cache_hit_rate, 2),
     )
 
 
@@ -68,6 +68,7 @@ async def model_drift(db: aiosqlite.Connection = Depends(get_db_dependency)):
         try:
             vec = encode_features(feat)
             from src.utils.feature_encoder import get_feature_dict
+
             live_features_encoded.append(get_feature_dict(vec))
         except Exception:
             continue

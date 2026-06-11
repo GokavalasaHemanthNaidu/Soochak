@@ -12,9 +12,7 @@ TIMEOUT = 10.0
 
 
 async def explain_prediction(
-    top_features: list,
-    probability: float,
-    predicted_class: int
+    top_features: list, probability: float, predicted_class: int
 ) -> Optional[str]:
     """Generate plain-English explanation using Groq LLM with fallback."""
     if not GROQ_API_KEY:
@@ -77,5 +75,10 @@ def _generate_fallback(top_features, probability, predicted_class) -> str:
         "urban_rural": f"Rural roads have higher speeds and fewer emergency services, contributing to the {severity} prediction.",
     }
 
-    base = explanations.get(top, f"The model predicts this accident as {severity} with {probability:.1%} confidence based on multiple risk factors.")
-    return base + " Recommendation: Improve infrastructure and enforce speed limits in this segment."
+    base = explanations.get(
+        top,
+        f"The model predicts this accident as {severity} with {probability:.1%} confidence based on multiple risk factors.",
+    )
+    return (
+        base + " Recommendation: Improve infrastructure and enforce speed limits in this segment."
+    )

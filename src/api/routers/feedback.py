@@ -11,8 +11,7 @@ router = APIRouter()
 
 @router.post("/feedback", response_model=FeedbackResponse)
 async def submit_feedback(
-    request: FeedbackRequest,
-    db: aiosqlite.Connection = Depends(get_db_dependency)
+    request: FeedbackRequest, db: aiosqlite.Connection = Depends(get_db_dependency)
 ):
     """Log human feedback on a prediction."""
     async with db.execute(
@@ -24,7 +23,7 @@ async def submit_feedback(
     cursor = await db.execute(
         """INSERT INTO feedback (prediction_id, was_correct, human_label, feedback_source)
            VALUES (?, ?, ?, ?)""",
-         (request.prediction_id, request.was_correct, request.human_label, "ui")
+        (request.prediction_id, request.was_correct, request.human_label, "ui"),
     )
     feedback_id = cursor.lastrowid
     await db.commit()
@@ -39,6 +38,5 @@ async def submit_feedback(
 
     return FeedbackResponse(
         feedback_id=feedback_id,
-        correction_rate_7d=round(correction_rate, 2) if correction_rate is not None else None
+        correction_rate_7d=round(correction_rate, 2) if correction_rate is not None else None,
     )
-

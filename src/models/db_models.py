@@ -1,6 +1,7 @@
 from typing import Optional
 from pydantic import BaseModel
 
+
 class Incident(BaseModel):
     id: Optional[int] = None
     datetime: Optional[str] = None
@@ -21,6 +22,7 @@ class Incident(BaseModel):
     source: Optional[str] = "api"
     created_at: Optional[str] = None
 
+
 class Prediction(BaseModel):
     id: Optional[int] = None
     incident_id: int
@@ -34,6 +36,7 @@ class Prediction(BaseModel):
     cache_hit: Optional[int] = 0
     created_at: Optional[str] = None
 
+
 class Counterfactual(BaseModel):
     id: Optional[int] = None
     incident_id: int
@@ -44,6 +47,7 @@ class Counterfactual(BaseModel):
     new_prob: Optional[float] = None
     delta_prob: Optional[float] = None
     created_at: Optional[str] = None
+
 
 class Feedback(BaseModel):
     id: Optional[int] = None

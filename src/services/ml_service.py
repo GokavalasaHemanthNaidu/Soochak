@@ -13,12 +13,11 @@ Calibration behavior:
 """
 
 import json
-import os
 import pickle
 import time
 import warnings
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 import joblib
 import numpy as np
@@ -36,14 +35,33 @@ XGB_PATH = ML_ARTIFACTS / "xgboost_model.pkl"
 META_PATH = ML_ARTIFACTS / "feature_metadata.json"
 
 FEATURE_ORDER = [
-    "Road_Type", "Speed_Limit", "Weather", "Lighting", "Junction",
-    "Junction_Control", "Vehicle_Type", "Driver_Age", "Urban_Rural",
-    "State", "City", "State_Risk_Score", "Weather_Risk", "Road_Geometry_Index",
+    "Road_Type",
+    "Speed_Limit",
+    "Weather",
+    "Lighting",
+    "Junction",
+    "Junction_Control",
+    "Vehicle_Type",
+    "Driver_Age",
+    "Urban_Rural",
+    "State",
+    "City",
+    "State_Risk_Score",
+    "Weather_Risk",
+    "Road_Geometry_Index",
 ]
 
 CATEGORICAL_FEATURES = [
-    "Road_Type", "Weather", "Lighting", "Junction", "Junction_Control",
-    "Vehicle_Type", "Driver_Age", "Urban_Rural", "State", "City"
+    "Road_Type",
+    "Weather",
+    "Lighting",
+    "Junction",
+    "Junction_Control",
+    "Vehicle_Type",
+    "Driver_Age",
+    "Urban_Rural",
+    "State",
+    "City",
 ]
 
 # Fallback global mean (will be overridden by metadata)
@@ -87,9 +105,7 @@ class MLService:
         te_state = self.target_encodings.get("State_Risk_Score", {})
         te_weather = self.target_encodings.get("Weather_Risk", {})
         self.global_mean = float(
-            te_state.get("global_mean",
-                te_weather.get("global_mean", GLOBAL_MEAN_TARGET)
-            )
+            te_state.get("global_mean", te_weather.get("global_mean", GLOBAL_MEAN_TARGET))
         )
         self.state_risk_map = te_state.get("mapping", {})
         self.weather_risk_map = te_weather.get("mapping", {})
@@ -102,15 +118,11 @@ class MLService:
         )
 
         self.shap_base_value = float(self.metadata.get("base_value", 0.5308434221730036))
-        self.shap_base_log_odds = float(
-            self.metadata.get("base_value_log_odds", 0.1235)
-        )
+        self.shap_base_log_odds = float(self.metadata.get("base_value_log_odds", 0.1235))
 
         if not ONNX_PATH.exists():
             raise RuntimeError(f"ONNX model not found at {ONNX_PATH}")
-        self.onnx_session = ort.InferenceSession(
-            str(ONNX_PATH), providers=["CPUExecutionProvider"]
-        )
+        self.onnx_session = ort.InferenceSession(str(ONNX_PATH), providers=["CPUExecutionProvider"])
         self.onnx_input_name = self.onnx_session.get_inputs()[0].name
         onnx_shape = self.onnx_session.get_inputs()[0].shape
         if onnx_shape[1] != self.n_features:
@@ -129,7 +141,9 @@ class MLService:
         self.shap_explainer = shap.TreeExplainer(self.xgb_model)
 
         load_ms = round((time.time() - t0) * 1000, 2)
-        print(f"[MLService] Loaded in {load_ms}ms | threshold={self.optimal_threshold} | global_mean={self.global_mean:.4f}")
+        print(
+            f"[MLService] Loaded in {load_ms}ms | threshold={self.optimal_threshold} | global_mean={self.global_mean:.4f}"
+        )
 
     def _encode_categorical(self, feature_name: str, value: str) -> int:
         classes = self.encoders.get(feature_name, [])
@@ -163,10 +177,10 @@ class MLService:
         weather_risk = self._target_encode("Weather_Risk", weather_raw)
 
         road_geom_idx = (
-            encoded["Road_Type"] * 0.3 +
-            encoded["Junction"] * 0.2 +
-            encoded["Junction_Control"] * 0.2 +
-            encoded["Lighting"] * 0.3
+            encoded["Road_Type"] * 0.3
+            + encoded["Junction"] * 0.2
+            + encoded["Junction_Control"] * 0.2
+            + encoded["Lighting"] * 0.3
         )
 
         vector = [
@@ -228,16 +242,16 @@ class MLService:
         for i, name in enumerate(self.feature_names):
             contrib = float(shap_values[i])
             contrib_prob = float(1 / (1 + np.exp(-(self.shap_base_log_odds + contrib))))
-            contributions.append({
-                "feature": name,
-                "value": float(features[0][i]),
-                "contribution": round(contrib, 4),
-                "contribution_prob": round(contrib_prob, 4),
-            })
+            contributions.append(
+                {
+                    "feature": name,
+                    "value": float(features[0][i]),
+                    "contribution": round(contrib, 4),
+                    "contribution_prob": round(contrib_prob, 4),
+                }
+            )
 
-        top_features = sorted(
-            contributions, key=lambda x: abs(x["contribution"]), reverse=True
-        )[:3]
+        top_features = sorted(contributions, key=lambda x: abs(x["contribution"]), reverse=True)[:3]
 
         # Confidence: distance from calibrated threshold (not 0.5)
         distance = abs(calibrated_prob - self.optimal_threshold)
@@ -275,6 +289,7 @@ class MLService:
             "optimal_threshold": self.optimal_threshold,
             "shap_base_value": self.shap_base_value,
         }
+
 
 def get_ml_service() -> MLService:
     return MLService()

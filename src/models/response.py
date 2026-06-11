@@ -1,18 +1,17 @@
 """Pydantic response models for the SOOCHAK prediction API."""
 
 from pydantic import BaseModel, Field
-from typing import List, Dict, Optional
+from typing import List, Optional
 from datetime import datetime
 
 
 class SHAPContribution(BaseModel):
     """Single feature contribution from SHAP explainability."""
+
     feature: str = Field(..., description="Feature name")
     value: float = Field(..., description="Encoded feature value")
     contribution: float = Field(..., description="SHAP value (log-odds impact)")
-    contribution_prob: float = Field(
-        ..., description="Approximate probability-space contribution"
-    )
+    contribution_prob: float = Field(..., description="Approximate probability-space contribution")
 
 
 class PredictResponse(BaseModel):
@@ -25,30 +24,21 @@ class PredictResponse(BaseModel):
     prediction_id: int = Field(..., description="SQLite row ID")
     incident_id: int = Field(..., description="SQLite row ID from incidents table")
     predicted_class: int = Field(
-        ..., ge=0, le=1,
-        description="0 = Slight Injury, 1 = Serious/Fatal Injury"
+        ..., ge=0, le=1, description="0 = Slight Injury, 1 = Serious/Fatal Injury"
     )
     probability: float = Field(
-        ..., ge=0.0, le=1.0,
-        description="Calibrated probability of Serious/Fatal injury"
+        ..., ge=0.0, le=1.0, description="Calibrated probability of Serious/Fatal injury"
     )
     raw_probability: float = Field(
-        ..., ge=0.0, le=1.0,
-        description="Raw ONNX model probability (before calibration)"
+        ..., ge=0.0, le=1.0, description="Raw ONNX model probability (before calibration)"
     )
-    confidence: str = Field(
-        ..., description="Prediction confidence: low | medium | high"
-    )
+    confidence: str = Field(..., description="Prediction confidence: low | medium | high")
     inference_ms: float = Field(..., description="End-to-end inference latency (ms)")
     threshold_used: float = Field(..., description="Threshold applied for class assignment")
 
     # Explainability
-    shap_base_value: float = Field(
-        ..., description="SHAP expected value (probability space)"
-    )
-    top_features: List[SHAPContribution] = Field(
-        ..., description="Top 3 contributing features"
-    )
+    shap_base_value: float = Field(..., description="SHAP expected value (probability space)")
+    top_features: List[SHAPContribution] = Field(..., description="Top 3 contributing features")
 
     # Metadata
     model_version: str = Field(default="soochak_v1", description="ONNX model version")
@@ -77,27 +67,28 @@ class PredictResponse(BaseModel):
                         "feature": "Speed_Limit",
                         "value": 80.0,
                         "contribution": 0.45,
-                        "contribution_prob": 0.11
+                        "contribution_prob": 0.11,
                     },
                     {
                         "feature": "State_Risk_Score",
                         "value": 0.18,
                         "contribution": 0.32,
-                        "contribution_prob": 0.08
+                        "contribution_prob": 0.08,
                     },
                     {
                         "feature": "Weather_Risk",
                         "value": 0.15,
                         "contribution": 0.18,
-                        "contribution_prob": 0.04
-                    }
+                        "contribution_prob": 0.04,
+                    },
                 ],
                 "model_version": "soochak_v1",
                 "calibrated": True,
                 "timestamp": "2026-06-11T13:55:00Z",
-                "feature_vector": None
+                "feature_vector": None,
             }
         }
+
 
 class CounterfactualResponse(BaseModel):
     original_prob: float
@@ -106,10 +97,12 @@ class CounterfactualResponse(BaseModel):
     delta_pct: float
     interpretation: str
 
+
 class ExplainResponse(BaseModel):
     groq_explanation: str
     top_features: List[SHAPContribution]
     recommendation: Optional[str] = None
+
 
 class BatchStatusResponse(BaseModel):
     task_id: str
@@ -118,6 +111,7 @@ class BatchStatusResponse(BaseModel):
     results_url: Optional[str] = None
     estimated_seconds: Optional[int] = None
     warning: str = "Jobs are stored in-memory and lost on container restart."
+
 
 class IncidentResponse(BaseModel):
     id: int
@@ -139,11 +133,13 @@ class IncidentResponse(BaseModel):
     source: str = "api"
     created_at: Optional[str] = None
 
+
 class IncidentListResponse(BaseModel):
     incidents: List[IncidentResponse]
     total: int
     page: int
     pages: int
+
 
 class ModelMetricsResponse(BaseModel):
     model_version: str
@@ -154,19 +150,23 @@ class ModelMetricsResponse(BaseModel):
     predictions_today: int
     cache_hit_rate: float
 
+
 class DriftFeature(BaseModel):
     feature: str
     p_value: float
     drifted: bool
+
 
 class DriftResponse(BaseModel):
     overall_drift: bool
     features: List[DriftFeature]
     checked_at: str
 
+
 class FeedbackResponse(BaseModel):
     feedback_id: int
     correction_rate_7d: Optional[float] = None
+
 
 class HealthResponse(BaseModel):
     status: str
@@ -176,6 +176,7 @@ class HealthResponse(BaseModel):
     uptime_s: float
     optimal_threshold: float = 0.0
     global_mean: float = 0.0
+
 
 class LatencyResponse(BaseModel):
     p50_ms: float

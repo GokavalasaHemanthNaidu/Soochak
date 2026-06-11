@@ -1,9 +1,22 @@
-"""Async batch prediction queue using asyncio.
+import re
+from pathlib import Path
+
+blueprint_path = Path(r"C:\Users\Hemanth\Downloads\ROADRISK_ZERO_FLAW_BLUEPRINT.md")
+
+with open(blueprint_path, "r", encoding="utf-8") as f:
+    bp_content = f.read()
+
+# Define the Step 6.1 block to insert
+step_6_1 = """## Step 6.1: Create Batch Service
+
+```bash
+cat > src/services/batch_service.py << 'EOF'
+\"\"\"Async batch prediction queue using asyncio.
 
 NOTE: This demonstrates the asyncio.Queue producer-consumer pattern.
 Jobs are stored in-memory and will be lost on container restart.
 For production, upgrade to Redis + Celery.
-"""
+\"\"\"
 
 import asyncio
 import uuid
@@ -17,7 +30,7 @@ BATCH_QUEUE = asyncio.Queue()
 
 
 async def process_batch_task(task_id: str, incidents: List[dict]):
-    """Process a batch of incidents asynchronously using MLService."""
+    \"\"\"Process a batch of incidents asynchronously using MLService.\"\"\"
     TASKS[task_id]["status"] = "processing"
     total = len(incidents)
     results = []
@@ -32,33 +45,28 @@ async def process_batch_task(task_id: str, incidents: List[dict]):
                 result = ml_service.predict(incident)
                 cache_set(incident, result)
 
-            results.append(
-                {
-                    "incident": incident,
-                    "predicted_class": result["predicted_class"],
-                    "probability": result["probability"],
-                    "raw_probability": result["raw_probability"],
-                    "confidence": result["confidence"],
-                    "threshold_used": result["threshold_used"],
-                    "top_features": [
-                        {
-                            "feature": f["feature"],
-                            "value": f["value"],
-                            "contribution": f["contribution"],
-                            "contribution_prob": f["contribution_prob"],
-                        }
-                        for f in result["top_features"]
-                    ],
-                    "inference_ms": result["inference_ms"],
-                }
-            )
+            results.append({
+                "incident": incident,
+                "predicted_class": result["predicted_class"],
+                "probability": result["probability"],
+                "raw_probability": result["raw_probability"],
+                "confidence": result["confidence"],
+                "threshold_used": result["threshold_used"],
+                "top_features": [
+                    {
+                        "feature": f["feature"],
+                        "value": f["value"],
+                        "contribution": f["contribution"],
+                        "contribution_prob": f["contribution_prob"]
+                    } for f in result["top_features"]
+                ],
+                "inference_ms": result["inference_ms"],
+            })
 
         except Exception as e:
             results.append({"incident": incident, "error": str(e)})
 
         TASKS[task_id]["progress_pct"] = round((i + 1) / total * 100, 1)
-        # Yield control back to the event loop to prevent blocking the server during batch runs
-        await asyncio.sleep(0)
 
     TASKS[task_id]["status"] = "complete"
     TASKS[task_id]["results"] = results
@@ -66,7 +74,7 @@ async def process_batch_task(task_id: str, incidents: List[dict]):
 
 
 async def batch_consumer():
-    """Background consumer that processes queued batch tasks."""
+    \"\"\"Background consumer that processes queued batch tasks.\"\"\"
     while True:
         try:
             task_id, incidents = await BATCH_QUEUE.get()
@@ -77,19 +85,8 @@ async def batch_consumer():
             await asyncio.sleep(1)
 
 
-def _cleanup_old_tasks():
-    """Remove tasks older than 1 hour to prevent memory leak."""
-    now = time.time()
-    stale = [
-        tid for tid, t in TASKS.items() if t.get("completed_at") and now - t["completed_at"] > 3600
-    ]
-    for tid in stale:
-        del TASKS[tid]
-
-
 def create_task(incidents: List[dict]) -> str:
-    """Create a new batch task and enqueue it."""
-    _cleanup_old_tasks()
+    \"\"\"Create a new batch task and enqueue it.\"\"\"
     task_id = str(uuid.uuid4())
     TASKS[task_id] = {
         "task_id": task_id,
@@ -104,10 +101,25 @@ def create_task(incidents: List[dict]) -> str:
 
 
 def get_task_status(task_id: str) -> dict:
-    """Get status of a batch task."""
+    \"\"\"Get status of a batch task.\"\"\"
     if task_id not in TASKS:
         return None
     task = TASKS[task_id].copy()
     if task["results"]:
         task["results_count"] = len(task["results"])
     return task
+EOF
+```
+
+"""
+
+if "## Step 6.1: Create Batch Service" not in bp_content:
+    print("Step 6.1 not found, inserting...")
+    # Insert right before Step 6.2
+    bp_content = bp_content.replace("## Step 6.2: Create Batch Router", step_6_1 + "## Step 6.2: Create Batch Router")
+    
+    with open(blueprint_path, "w", encoding="utf-8") as f:
+        f.write(bp_content)
+    print("Step 6.1 successfully inserted!")
+else:
+    print("Step 6.1 already exists in the file!")

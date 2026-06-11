@@ -18,7 +18,7 @@ async def list_incidents(
     city: Optional[str] = Query(None),
     date_from: Optional[str] = Query(None),
     date_to: Optional[str] = Query(None),
-    db: aiosqlite.Connection = Depends(get_db_dependency)
+    db: aiosqlite.Connection = Depends(get_db_dependency),
 ):
     """Paginated incident list with filters."""
     conditions = []
@@ -59,7 +59,7 @@ async def list_incidents(
         incidents=[IncidentResponse(**inc) for inc in incidents],
         total=total,
         page=page,
-        pages=pages
+        pages=pages,
     )
 
 
@@ -89,9 +89,7 @@ async def get_incident(incident_id: int, db: aiosqlite.Connection = Depends(get_
 @router.get("/predictions/{prediction_id}")
 async def get_prediction(prediction_id: int, db: aiosqlite.Connection = Depends(get_db_dependency)):
     """Get prediction with SHAP and explanation."""
-    async with db.execute(
-        "SELECT * FROM predictions WHERE id = ?", (prediction_id,)
-    ) as cursor:
+    async with db.execute("SELECT * FROM predictions WHERE id = ?", (prediction_id,)) as cursor:
         row = await cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Prediction not found")

@@ -53,7 +53,12 @@ indent-style = "space"
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = [".", "src"]
+filterwarnings = [
+    "ignore::pytest.PytestUnraisableExceptionWarning",
+    "ignore::pytest.PytestUnhandledThreadExceptionWarning",
+    "ignore::DeprecationWarning",
+]
 
 [tool.coverage.run]
 source = ["src"]

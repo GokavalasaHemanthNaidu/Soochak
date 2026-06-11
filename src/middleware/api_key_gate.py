@@ -6,6 +6,7 @@ logger = logging.getLogger(__name__)
 
 DEMO_KEY = os.getenv("DEMO_API_KEY", "soochak-demo-2024")
 
+
 async def api_key_gate(request: Request):
     """
     Protects POST endpoints from bot abuse.
@@ -20,7 +21,6 @@ async def api_key_gate(request: Request):
     referer = request.headers.get("referer", "")
     if request.url.path in ("/v1/predict", "/v1/predict/") and referer.endswith("/"):
         return
-
 
     api_key = request.headers.get("X-API-Key")
     if api_key != DEMO_KEY:
