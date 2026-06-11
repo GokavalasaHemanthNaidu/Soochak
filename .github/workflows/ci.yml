@@ -20,7 +20,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install pytest pytest-asyncio pytest-cov ruff==0.4.4 bandit pip-audit
+          pip install -r requirements-dev.txt
 
       - name: Lint with ruff
         run: ruff check src/ tests/ --select E,F,W --ignore E501
