@@ -3,223 +3,510 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SOOCHAK — ML Inference Dashboard</title>
+    <title>SOOCHAK — Explainable Road Safety Engine</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3 { font-family: 'Outfit', sans-serif; }
+        .shap-bar { transition: all 0.3s ease; }
+        .glass-card { 
+            background: rgba(30, 41, 59, 0.45); 
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .metric-card { 
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%); 
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-200 min-h-screen p-8">
-    
-    <div class="max-w-5xl mx-auto">
-        <header class="mb-10 border-b border-slate-800 pb-6 flex items-center justify-between">
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- Header -->
+        <header class="mb-8 flex justify-between items-center border-b border-slate-800/80 pb-6">
             <div>
-                <h1 class="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">SOOCHAK</h1>
-                <p class="text-slate-400 mt-2">Explainable Road Accident Severity Predictor</p>
+                <h1 class="text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-indigo-400 to-emerald-400">🚗 SOOCHAK</h1>
+                <p class="text-slate-400 mt-1.5 text-sm">Explainable Road Accident Severity Predictor &amp; Intervention Simulator</p>
             </div>
-            <div class="flex items-center gap-2">
-                <span class="relative flex h-3 w-3">
-                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-                </span>
-                <span class="text-sm text-emerald-400 font-medium">API Online</span>
+            <div class="text-right">
+                <div id="healthStatus" class="inline-flex items-center px-3.5 py-1.5 rounded-full bg-emerald-950/80 text-emerald-400 border border-emerald-500/20 text-xs font-semibold tracking-wide uppercase">
+                    <span class="w-2 h-2 bg-emerald-400 rounded-full mr-2.5 animate-pulse"></span>
+                    System Online
+                </div>
             </div>
         </header>
 
-        <main class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            
-            <!-- Left Column: Input Form Simulator -->
-            <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-2xl">
-                <h2 class="text-xl font-semibold mb-6 flex items-center gap-2">
-                    <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                    Incident Simulator
-                </h2>
-                
-                <p class="text-sm text-slate-400 mb-6">Clicking the button will simulate an incident payload and execute a real-time prediction against the SOOCHAK inference engine.</p>
-                
-                <div class="bg-slate-950 p-4 rounded-lg border border-slate-800 mb-6 font-mono text-xs text-slate-300 overflow-x-auto">
-                    <pre id="payload-preview">{
-  "Road_Type": "Undivided Two way",
-  "Speed_Limit": 60,
-  "Weather": "Normal",
-  "Lighting": "Daylight",
-  "Junction": "No junction",
-  "Junction_Control": "No distancing",
-  "Vehicle_Type": "Automobile",
-  "Driver_Age": "18-30",
-  "Urban_Rural": "Residential areas",
-  "State": "Tangent road with flat terrain",
-  "City": "Monday"
-}</pre>
-                </div>
+        <!-- Metrics Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div class="metric-card rounded-xl p-4 shadow-lg">
+                <div class="text-slate-400 text-xs uppercase tracking-wider font-semibold">Predictions Stored</div>
+                <div id="metricPredictions" class="text-3xl font-extrabold text-white mt-2">0</div>
+            </div>
+            <div class="metric-card rounded-xl p-4 shadow-lg">
+                <div class="text-slate-400 text-xs uppercase tracking-wider font-semibold">Optimal Threshold</div>
+                <div id="metricThreshold" class="text-3xl font-extrabold text-blue-400 mt-2">0.18</div>
+            </div>
+            <div class="metric-card rounded-xl p-4 shadow-lg">
+                <div class="text-slate-400 text-xs uppercase tracking-wider font-semibold">Cache Hit Rate</div>
+                <div id="metricCache" class="text-3xl font-extrabold text-amber-400 mt-2">0%</div>
+            </div>
+            <div class="metric-card rounded-xl p-4 shadow-lg">
+                <div class="text-slate-400 text-xs uppercase tracking-wider font-semibold">Active Model</div>
+                <div id="metricVersion" class="text-3xl font-extrabold text-emerald-400 mt-2">v1.0.0</div>
+            </div>
+        </div>
 
-                <button id="predict-btn" class="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20">
-                    <span>Run ML Inference</span>
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                </button>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Prediction Form -->
+            <div class="glass-card rounded-xl p-6 shadow-2xl">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+                        <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                        Incident Simulator
+                    </h2>
+                    <button onclick="loadDemo()" class="text-xs font-semibold text-blue-400 hover:text-blue-300 transition underline underline-offset-4">Load Demo Scenario</button>
+                </div>
+                <form id="predictForm" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1.5 font-medium uppercase tracking-wider">Road Type</label>
+                            <select name="Road_Type" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition">
+                                <option>National Highway</option><option>State Highway</option><option>City Road</option><option>Rural Road</option><option>Expressway</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1.5 font-medium uppercase tracking-wider">Speed Limit</label>
+                            <select name="Speed_Limit" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition">
+                                <option value="">Unknown</option>
+                                <option>10</option><option>20</option><option>30</option><option>40</option><option>50</option><option>60</option><option>70</option><option selected>80</option><option>100</option><option>120</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1.5 font-medium uppercase tracking-wider">Weather</label>
+                            <select name="Weather" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition">
+                                <option>Clear</option><option>Rain</option><option>Fog</option><option>Dust storm</option><option>Cloudy</option><option>Thunderstorm</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1.5 font-medium uppercase tracking-wider">Lighting</label>
+                            <select name="Lighting" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition">
+                                <option>Daylight</option><option>Darkness - lights lit</option><option>Darkness - no lighting</option><option>Dusk</option><option>Dawn</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1.5 font-medium uppercase tracking-wider">Junction</label>
+                            <select name="Junction" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition">
+                                <option>None</option><option>Roundabout</option><option>T-junction</option><option>Crossroads</option><option>Y-junction</option><option>Slip road</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1.5 font-medium uppercase tracking-wider">Junction Control</label>
+                            <select name="Junction_Control" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition">
+                                <option value="">None</option><option>Signal</option><option>Stop</option><option>Give Way</option><option selected>Uncontrolled</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1.5 font-medium uppercase tracking-wider">Vehicle Type</label>
+                            <input type="text" name="Vehicle_Type" value="Two-wheeler" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1.5 font-medium uppercase tracking-wider">Driver Age</label>
+                            <select name="Driver_Age" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition">
+                                <option>Young (17-24)</option><option selected>Middle (25-59)</option><option>Elderly (60+)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1.5 font-medium uppercase tracking-wider">Urban/Rural</label>
+                            <select name="Urban_Rural" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition">
+                                <option>Urban</option><option>Semi-urban</option><option selected>Rural</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1.5 font-medium uppercase tracking-wider">State</label>
+                            <input type="text" name="State" value="Maharashtra" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1.5 font-medium uppercase tracking-wider">City</label>
+                        <input type="text" name="City" value="Pune" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition">
+                    </div>
+                    <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold py-3 px-4 rounded-xl transition shadow-lg shadow-blue-500/10">Predict Severity</button>
+                </form>
             </div>
 
-            <!-- Right Column: Results Panel -->
-            <div id="results-panel" class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-2xl opacity-50 pointer-events-none transition-opacity duration-300">
-                <h2 class="text-xl font-semibold mb-6 flex items-center gap-2">
-                    <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    Inference Results
-                </h2>
-
-                <div class="grid grid-cols-2 gap-4 mb-6">
-                    <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-700/50">
-                        <div class="text-xs text-slate-400 mb-1 uppercase tracking-wider">Predicted Class</div>
-                        <div id="res-class" class="text-2xl font-bold text-white">-</div>
+            <!-- Results Panel -->
+            <div class="space-y-6">
+                <div id="resultPanel" class="glass-card rounded-xl p-6 shadow-2xl hidden">
+                    <h2 class="text-xl font-bold mb-4 text-white flex items-center gap-2">
+                        <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Inference Result
+                    </h2>
+                    <div class="flex items-center gap-6 mb-5 bg-slate-950/40 p-4 rounded-lg border border-slate-800">
+                        <div id="severityBadge" class="px-5 py-2.5 rounded-lg text-2xl font-black tracking-wide"></div>
+                        <div>
+                            <div class="text-xs text-slate-400 font-semibold uppercase tracking-wider">Calibrated Risk</div>
+                            <div id="probValue" class="text-3xl font-black mt-1 text-white"></div>
+                        </div>
                     </div>
-                    <div class="bg-slate-800/50 p-4 rounded-lg border border-slate-700/50">
-                        <div class="text-xs text-slate-400 mb-1 uppercase tracking-wider">Confidence</div>
-                        <div id="res-conf" class="text-2xl font-bold text-white capitalize">-</div>
+                    <div class="grid grid-cols-3 gap-2 text-xs text-slate-400 mb-5">
+                        <div class="bg-slate-900/40 p-2.5 rounded border border-slate-800">Latency: <span id="infTime" class="text-slate-100 font-bold"></span></div>
+                        <div class="bg-slate-900/40 p-2.5 rounded border border-slate-800">Model: <span id="modelVer" class="text-slate-100 font-bold"></span></div>
+                        <div class="bg-slate-900/40 p-2.5 rounded border border-slate-800">Cache: <span id="cacheStatus" class="text-slate-100 font-bold"></span></div>
+                    </div>
+
+                    <!-- Interactive Human Feedback Block -->
+                    <div id="feedbackBlock" class="mt-4 pt-4 border-t border-slate-800/85">
+                        <span class="text-xs text-slate-400 font-semibold uppercase tracking-wider block">Was this prediction correct?</span>
+                        <div class="flex gap-2 mt-2">
+                            <button onclick="submitFeedback(1)" class="bg-emerald-600/80 hover:bg-emerald-500 hover:text-white text-emerald-100 text-xs font-semibold px-3 py-2 rounded-lg transition border border-emerald-500/20 shadow-md">Yes, Correct</button>
+                            <button onclick="submitFeedback(0)" class="bg-red-600/80 hover:bg-red-500 hover:text-white text-red-100 text-xs font-semibold px-3 py-2 rounded-lg transition border border-red-500/20 shadow-md">No, Incorrect</button>
+                        </div>
+                        <div id="feedbackMsg" class="text-xs text-emerald-400 mt-2 font-semibold bg-emerald-950/20 p-2 rounded border border-emerald-500/10 hidden"></div>
                     </div>
                 </div>
 
-                <!-- Calibration Contrast -->
-                <div class="mb-6 bg-slate-950 rounded-lg p-5 border border-slate-800">
-                    <h3 class="text-sm font-medium text-slate-300 mb-4 uppercase tracking-wider">Probability Calibration</h3>
-                    
-                    <div class="space-y-4">
-                        <!-- Raw -->
-                        <div>
-                            <div class="flex justify-between text-sm mb-1">
-                                <span class="text-slate-400">Raw Model Output (XGBoost)</span>
-                                <span id="res-raw" class="font-mono text-orange-400">-</span>
-                            </div>
-                            <div class="w-full bg-slate-800 rounded-full h-2">
-                                <div id="bar-raw" class="bg-orange-400 h-2 rounded-full transition-all duration-1000" style="width: 0%"></div>
-                            </div>
-                        </div>
-
-                        <!-- Calibrated -->
-                        <div>
-                            <div class="flex justify-between text-sm mb-1">
-                                <span class="text-slate-400 flex items-center gap-1">
-                                    Calibrated Probability
-                                    <span class="group relative cursor-help">
-                                        <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                        <span class="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2 bg-slate-800 text-xs rounded border border-slate-700 z-10">Isotonic calibration corrects systematic overconfidence, adjusting to the true 15% dataset base rate.</span>
-                                    </span>
-                                </span>
-                                <span id="res-calibrated" class="font-mono text-emerald-400">-</span>
-                            </div>
-                            <div class="w-full bg-slate-800 rounded-full h-2 relative">
-                                <div id="bar-calibrated" class="bg-emerald-400 h-2 rounded-full transition-all duration-1000" style="width: 0%"></div>
-                                <!-- Optimal Threshold Marker -->
-                                <div class="absolute top-0 bottom-0 w-0.5 bg-blue-500 left-[18%] z-10" title="Optimal Decision Threshold: 0.18"></div>
-                            </div>
-                            <div class="text-[10px] text-slate-500 mt-1 mt-1 flex justify-between">
-                                <span>0%</span>
-                                <span class="text-blue-500 ml-[-20px]">Threshold (18%)</span>
-                                <span>100%</span>
-                            </div>
-                        </div>
+                <div id="shapPanel" class="glass-card rounded-xl p-6 shadow-2xl hidden">
+                    <h2 class="text-xl font-bold mb-4 text-white flex items-center gap-2">
+                        <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.003 9.003 0 1020.945 13H11V3.055z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path></svg>
+                        SHAP Explainability
+                    </h2>
+                    <div class="h-[200px] relative mb-4">
+                        <canvas id="shapChart"></canvas>
                     </div>
+                    <div id="topFeatures" class="space-y-2 mt-4"></div>
+                    <button onclick="getExplanation()" class="mt-5 w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-2.5 px-4 rounded-xl transition shadow-lg">Retrieve AI Insights</button>
+                    <div id="aiExplanation" class="mt-4 p-4 bg-slate-900/60 border border-slate-800 rounded-lg text-sm hidden"></div>
                 </div>
+            </div>
+        </div>
 
-                <!-- SHAP Feature Contributions -->
+        <!-- What-If Simulator -->
+        <div id="whatIfPanel" class="mt-6 glass-card rounded-xl p-6 shadow-2xl hidden">
+            <h2 class="text-2xl font-bold mb-4 text-white flex items-center gap-2">
+                <svg class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                What-If Scenario Simulator
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                    <h3 class="text-sm font-medium text-slate-300 mb-3 uppercase tracking-wider">Top Risk Drivers (SHAP)</h3>
-                    <div id="shap-list" class="space-y-2">
-                        <!-- SHAP items will be injected here -->
-                        <div class="text-sm text-slate-500 italic">Awaiting inference...</div>
-                    </div>
+                    <label class="block text-xs text-slate-400 mb-1.5 font-medium uppercase tracking-wider">Modify Feature</label>
+                    <select id="whatIfFeature" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition">
+                        <option value="speed_limit">Speed Limit</option>
+                        <option value="lighting">Lighting</option>
+                        <option value="weather">Weather</option>
+                        <option value="junction_ctrl">Junction Control</option>
+                        <option value="road_type">Road Type</option>
+                    </select>
                 </div>
-
-                <div class="mt-6 pt-4 border-t border-slate-800 flex justify-between items-center text-xs text-slate-500">
-                    <div>Latency: <span id="res-latency" class="font-mono">-</span></div>
-                    <div>Powered by ONNX + SHAP</div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1.5 font-medium uppercase tracking-wider">New Simulated Value</label>
+                    <input type="text" id="whatIfValue" value="40" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition">
+                </div>
+                <div class="flex items-end">
+                    <button onclick="runCounterfactual()" class="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-semibold py-2.5 px-4 rounded-xl transition shadow-lg shadow-amber-500/10">Simulate Intervention</button>
                 </div>
             </div>
+            <div id="counterfactualResult" class="mt-4 hidden"></div>
+        </div>
 
-        </main>
+        <!-- Incident History -->
+        <div class="mt-6 glass-card rounded-xl p-6 shadow-2xl">
+            <h2 class="text-2xl font-bold mb-4 text-white flex items-center gap-2">
+                <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Recent Incident Log
+            </h2>
+            <div id="incidentTable" class="overflow-x-auto">
+                <table class="w-full text-sm border-collapse text-left">
+                    <thead>
+                        <tr class="text-slate-400 border-b border-slate-800 text-xs font-semibold uppercase tracking-wider">
+                            <th class="py-3 px-4">ID</th>
+                            <th class="py-3 px-4">Road Type</th>
+                            <th class="py-3 px-4">Vehicle Type</th>
+                            <th class="py-3 px-4">State</th>
+                            <th class="py-3 px-4">Severity Check</th>
+                            <th class="py-3 px-4">Recorded At</th>
+                        </tr>
+                    </thead>
+                    <tbody id="incidentRows" class="text-slate-300 divide-y divide-slate-800/50">
+                        <tr><td colspan="6" class="py-6 text-center text-slate-500 italic">No incidents stored in registry</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <script>
-        document.getElementById('predict-btn').addEventListener('click', async () => {
-            const btn = document.getElementById('predict-btn');
-            const originalText = btn.innerHTML;
-            
-            // Loading state
-            btn.innerHTML = `<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Processing...`;
-            btn.disabled = true;
+        let currentIncidentId = null;
+        let currentPredictionId = null;
+        let shapChartInstance = null;
 
-            const payload = JSON.parse(document.getElementById('payload-preview').textContent);
+        function loadDemo() {
+            const form = document.getElementById('predictForm');
+            form.Road_Type.value = 'National Highway';
+            form.Speed_Limit.value = '80';
+            form.Weather.value = 'Clear';
+            form.Lighting.value = 'Darkness - no lighting';
+            form.Junction.value = 'None';
+            form.Junction_Control.value = 'Uncontrolled';
+            form.Vehicle_Type.value = 'Two-wheeler';
+            form.Driver_Age.value = 'Young (17-24)';
+            form.Urban_Rural.value = 'Rural';
+            form.State.value = 'Maharashtra';
+            form.City.value = 'Pune';
+        }
+
+        document.getElementById('predictForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+            data.Speed_Limit = data.Speed_Limit ? parseInt(data.Speed_Limit) : null;
+
+            document.getElementById('resultPanel').classList.remove('hidden');
+            document.getElementById('severityBadge').innerHTML = '<span class="text-slate-500 animate-pulse text-lg">Analyzing...</span>';
 
             try {
-                // Ensure X-API-Key matches DEMO_API_KEY from .env
                 const response = await fetch('/v1/predict/', {
                     method: 'POST',
-                    headers: { 
+                    headers: {
                         'Content-Type': 'application/json',
                         'X-API-Key': 'soochak-demo-2024'
                     },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify(data)
                 });
+                const result = await response.json();
 
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                
-                const data = await response.json();
-                
-                // Unlock and show results panel
-                const panel = document.getElementById('results-panel');
-                panel.classList.remove('opacity-50', 'pointer-events-none');
-
-                // Update basic stats
-                document.getElementById('res-class').textContent = data.predicted_class === 1 ? 'Fatal' : 'Non-Fatal';
-                document.getElementById('res-class').className = `text-2xl font-bold ${data.predicted_class === 1 ? 'text-red-400' : 'text-emerald-400'}`;
-                
-                document.getElementById('res-conf').textContent = data.confidence;
-                
-                let confColor = 'text-yellow-400';
-                if(data.confidence === 'high') confColor = 'text-emerald-400';
-                if(data.confidence === 'low') confColor = 'text-red-400';
-                document.getElementById('res-conf').className = `text-2xl font-bold capitalize ${confColor}`;
-
-                // Update Calibration bars
-                const rawPct = (data.raw_probability * 100).toFixed(1);
-                const calPct = (data.probability * 100).toFixed(1);
-                
-                document.getElementById('res-raw').textContent = `${rawPct}%`;
-                document.getElementById('bar-raw').style.width = `${rawPct}%`;
-                
-                document.getElementById('res-calibrated').textContent = `${calPct}%`;
-                document.getElementById('bar-calibrated').style.width = `${calPct}%`;
-
-                // Update SHAP
-                const shapContainer = document.getElementById('shap-list');
-                shapContainer.innerHTML = '';
-                
-                data.top_features.forEach(feat => {
-                    const isPositive = feat.contribution > 0;
-                    const colorClass = isPositive ? 'text-red-400' : 'text-emerald-400';
-                    const sign = isPositive ? '+' : '';
-                    
-                    const div = document.createElement('div');
-                    div.className = 'flex justify-between items-center bg-slate-950 p-3 rounded border border-slate-800';
-                    div.innerHTML = `
-                        <div class="text-sm font-medium text-slate-300">${feat.feature}</div>
-                        <div class="flex items-center gap-3">
-                            <span class="text-xs text-slate-500">Val: ${feat.value}</span>
-                            <span class="text-sm font-mono font-bold ${colorClass}">${sign}${feat.contribution.toFixed(3)}</span>
-                        </div>
-                    `;
-                    shapContainer.appendChild(div);
-                });
-
-                document.getElementById('res-latency').textContent = `${data.inference_ms}ms`;
-
-            } catch (error) {
-                console.error("Prediction failed:", error);
-                alert("Failed to run prediction. Check console and API key.");
-            } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
+                if (response.ok) {
+                    currentIncidentId = result.incident_id;
+                    currentPredictionId = result.prediction_id;
+                    displayResult(result);
+                    // Reset feedback panel on new prediction
+                    document.getElementById('feedbackBlock').classList.remove('hidden');
+                    document.getElementById('feedbackMsg').classList.add('hidden');
+                    loadIncidents();
+                } else {
+                    document.getElementById('severityBadge').innerHTML = `<span class="text-red-400">Error: ${result.detail}</span>`;
+                }
+            } catch (err) {
+                document.getElementById('severityBadge').innerHTML = `<span class="text-red-400">Network error</span>`;
             }
         });
+
+        function displayResult(result) {
+            const isFatal = result.predicted_class === 1;
+            const badge = document.getElementById('severityBadge');
+            badge.className = `px-4 py-2 rounded-lg text-lg font-black tracking-wide ${isFatal ? 'bg-red-950 text-red-400 border border-red-800/30' : 'bg-emerald-950 text-emerald-400 border border-emerald-800/30'}`;
+            badge.textContent = isFatal ? 'FATAL' : 'NON-FATAL';
+
+            document.getElementById('probValue').textContent = (result.probability * 100).toFixed(1) + '%';
+            document.getElementById('infTime').textContent = result.inference_ms.toFixed(1) + 'ms';
+            document.getElementById('modelVer').textContent = result.model_version;
+            document.getElementById('cacheStatus').textContent = result.cache_hit ? 'Hit' : 'Miss';
+
+            document.getElementById('shapPanel').classList.remove('hidden');
+            renderShapChart(result.top_features);
+            document.getElementById('whatIfPanel').classList.remove('hidden');
+            document.getElementById('counterfactualResult').classList.add('hidden');
+            document.getElementById('aiExplanation').classList.add('hidden');
+        }
+
+        function renderShapChart(topFeatures) {
+            const ctx = document.getElementById('shapChart').getContext('2d');
+            if (shapChartInstance) shapChartInstance.destroy();
+
+            const labels = topFeatures.map(f => f.feature);
+            const values = topFeatures.map(f => f.contribution);
+            const colors = values.map(v => v >= 0 ? 'rgba(239, 68, 68, 0.85)' : 'rgba(34, 197, 94, 0.85)');
+
+            shapChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: { 
+                    labels: labels, 
+                    datasets: [{ 
+                        label: 'SHAP Value', 
+                        data: values, 
+                        backgroundColor: colors, 
+                        borderWidth: 0,
+                        borderRadius: 4
+                    }] 
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { 
+                        x: { grid: { color: 'rgba(51, 65, 85, 0.3)' }, ticks: { color: '#64748b' } }, 
+                        y: { grid: { display: false }, ticks: { color: '#e2e8f0' } } 
+                    }
+                }
+            });
+
+            document.getElementById('topFeatures').innerHTML = topFeatures.map(f => `
+                <div class="flex justify-between items-center py-2.5 px-3 bg-slate-900/60 border border-slate-800 rounded-lg">
+                    <span class="text-slate-300 font-medium text-sm">${f.feature}</span>
+                    <span class="font-mono text-sm font-semibold ${f.contribution >= 0 ? 'text-red-400' : 'text-emerald-400'}">
+                        ${f.contribution > 0 ? '+' : ''}${f.contribution.toFixed(3)} (${f.contribution_prob >= 0 ? '+' : ''}${(f.contribution_prob*100).toFixed(1)}%)
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        async function getExplanation() {
+            if (!currentPredictionId) return;
+            const btn = document.querySelector('button[onclick="getExplanation()"]');
+            btn.textContent = 'Generating AI Insights...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/v1/explain', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': 'soochak-demo-2024'
+                    },
+                    body: JSON.stringify({prediction_id: currentPredictionId})
+                });
+                const result = await response.json();
+                const div = document.getElementById('aiExplanation');
+                div.classList.remove('hidden');
+                div.innerHTML = `<p class="text-slate-300 leading-relaxed">${result.groq_explanation}</p><p class="text-emerald-400 font-semibold mt-3">💡 Recommendation: ${result.recommendation}</p>`;
+            } catch (err) {
+                console.error(err);
+            } finally {
+                btn.textContent = 'Retrieve AI Insights';
+                btn.disabled = false;
+            }
+        }
+
+        async function runCounterfactual() {
+            if (!currentIncidentId) return;
+            const feature = document.getElementById('whatIfFeature').value;
+            const value = document.getElementById('whatIfValue').value;
+            const btn = document.querySelector('button[onclick="runCounterfactual()"]');
+            btn.textContent = 'Simulating...';
+
+            try {
+                const response = await fetch('/v1/counterfactual', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': 'soochak-demo-2024'
+                    },
+                    body: JSON.stringify({ incident_id: currentIncidentId, feature_to_change: feature, new_value: value })
+                });
+                const result = await response.json();
+                const div = document.getElementById('counterfactualResult');
+                div.classList.remove('hidden');
+                const color = result.delta_prob < 0 ? 'text-green-400' : 'text-red-400';
+                div.innerHTML = `
+                    <div class="p-4 bg-slate-900 border border-slate-800 rounded-lg">
+                        <div class="text-xl font-black ${color}">${result.delta_pct > 0 ? '+' : ''}${result.delta_pct.toFixed(1)}%</div>
+                        <div class="text-sm text-slate-300 mt-1">${result.interpretation}</div>
+                        <div class="text-xs text-slate-500 mt-2">Baseline Calibrated: ${(result.original_prob*100).toFixed(1)}% → Intervened: ${(result.new_prob*100).toFixed(1)}%</div>
+                    </div>`;
+            } catch (err) {
+                console.error(err);
+            } finally {
+                btn.textContent = 'Simulate Intervention';
+            }
+        }
+
+        async function submitFeedback(wasCorrect) {
+            if (!currentPredictionId) return;
+            try {
+                const severityText = document.getElementById('severityBadge').textContent;
+                const predictedClass = severityText === 'FATAL' ? 1 : 0;
+                const humanLabel = wasCorrect === 1 ? predictedClass : (1 - predictedClass);
+
+                const response = await fetch('/v1/feedback', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': 'soochak-demo-2024'
+                    },
+                    body: JSON.stringify({
+                        prediction_id: currentPredictionId,
+                        was_correct: wasCorrect,
+                        human_label: humanLabel
+                    })
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    const msg = document.getElementById('feedbackMsg');
+                    msg.classList.remove('hidden');
+                    msg.textContent = `Feedback recorded! 7D correction rate: ${result.correction_rate_7d !== null ? result.correction_rate_7d.toFixed(1) + '%' : '0.0%'}`;
+                    loadMetrics();
+                }
+            } catch (err) {
+                console.error('Failed to submit feedback:', err);
+            }
+        }
+
+        async function loadIncidents() {
+            try {
+                const response = await fetch('/v1/incidents?limit=10');
+                const data = await response.json();
+                const tbody = document.getElementById('incidentRows');
+                if (data.incidents.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="py-6 text-center text-slate-500 italic">No incidents stored in registry</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = data.incidents.map(inc => `
+                    <tr class="border-b border-slate-800 hover:bg-slate-900/40 transition">
+                        <td class="py-3 px-4 font-mono text-xs text-slate-400 font-semibold">${inc.id}</td>
+                        <td class="py-3 px-4 font-medium">${inc.road_type}</td>
+                        <td class="py-3 px-4">${inc.vehicle_type || '-'}</td>
+                        <td class="py-3 px-4 text-slate-300 font-semibold">${inc.state}</td>
+                        <td class="py-3 px-4"><span class="px-2.5 py-1 rounded text-xs font-bold ${inc.severity_true === 1 ? 'bg-red-950 text-red-400 border border-red-900/20' : 'bg-emerald-950 text-emerald-400 border border-emerald-900/20'}">${inc.severity_true === 1 ? 'Fatal' : 'Non-Fatal'}</span></td>
+                        <td class="py-3 px-4 text-slate-500 text-xs">${new Date(inc.created_at + 'Z').toLocaleString()}</td>
+                    </tr>
+                `).join('');
+                document.getElementById('metricPredictions').textContent = data.total;
+            } catch (err) {
+                console.error('Failed to load incidents:', err);
+            }
+        }
+
+        async function loadMetrics() {
+            try {
+                const response = await fetch('/v1/model/metrics');
+                const data = await response.json();
+                document.getElementById('metricVersion').textContent = data.model_version;
+                document.getElementById('metricCache').textContent = (data.cache_hit_rate * 100).toFixed(0) + '%';
+            } catch (err) {
+                console.error('Failed to load metrics:', err);
+            }
+        }
+
+        async function loadDriftStatus() {
+            try {
+                const response = await fetch('/v1/model/drift');
+                const data = await response.json();
+                const statusEl = document.getElementById('healthStatus');
+                if (data.overall_drift) {
+                    statusEl.className = 'inline-flex items-center px-3.5 py-1.5 rounded-full bg-red-950/80 text-red-400 border border-red-500/20 text-xs font-semibold tracking-wide uppercase';
+                    statusEl.innerHTML = '<span class="w-2 h-2 bg-red-400 rounded-full mr-2.5 animate-pulse"></span>Drift Detected';
+                } else {
+                    statusEl.className = 'inline-flex items-center px-3.5 py-1.5 rounded-full bg-emerald-950/80 text-emerald-400 border border-emerald-500/20 text-xs font-semibold tracking-wide uppercase';
+                    statusEl.innerHTML = '<span class="w-2 h-2 bg-emerald-400 rounded-full mr-2.5 animate-pulse"></span>System Online';
+                }
+            } catch (err) {
+                console.error('Failed to load drift status:', err);
+            }
+        }
+
+        loadIncidents();
+        loadMetrics();
+        loadDriftStatus();
     </script>
 </body>
 </html>
