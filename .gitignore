@@ -111,3 +111,6 @@ docker-compose.override.yml
 
 # Render / Infrastructure
 render.env
+
+# Scratch / temp scripts (agent-generated, not for repo)
+scratch/
