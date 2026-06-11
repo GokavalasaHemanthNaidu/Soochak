@@ -121,11 +121,48 @@ async def test_xss_sanitization(client, test_db):
 async def test_model_metrics(client, test_db):
     response = await client.get("/v1/model/metrics")
     assert response.status_code == 200
+    data = response.json()
+    assert "model_version" in data
+    assert "f1_score" in data
+    assert "predictions_today" in data
+    assert "cache_hit_rate" in data
 
 @pytest.mark.asyncio
 async def test_model_drift(client, test_db):
+    # Test case 1: Empty database should return empty features and overall_drift=False
     response = await client.get("/v1/model/drift")
     assert response.status_code == 200
+    data = response.json()
+    assert data["overall_drift"] is False
+    assert len(data["features"]) == 0
+
+    # Test case 2: Insert predictions so we have a live distribution
+    headers = {"X-API-Key": "soochak-demo-2024"}
+    payload = {
+        "Road_Type": "Undivided Two way",
+        "Speed_Limit": 80,
+        "Weather": "Windy",
+        "Lighting": "Darkness - no lighting",
+        "Junction": "Crossing",
+        "Junction_Control": "Drunk driving",
+        "Vehicle_Type": "Motorcycle",
+        "Driver_Age": "Under 18",
+        "Urban_Rural": "Rural village areas",
+        "State": "Steep grade upward with mountainous terrain",
+        "City": "Saturday"
+    }
+    pred_res = await client.post("/v1/predict/", json=payload, headers=headers)
+    assert pred_res.status_code == 200
+
+    # Query drift again - should now compute features list comparing live prediction vs training distributions
+    response = await client.get("/v1/model/drift")
+    assert response.status_code == 200
+    data = response.json()
+    assert "overall_drift" in data
+    assert len(data["features"]) > 0
+    assert "p_value" in data["features"][0]
+    assert "drifted" in data["features"][0]
+
 
 
 @pytest.mark.asyncio
