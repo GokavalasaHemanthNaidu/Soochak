@@ -59,7 +59,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="SOOCHAK", version="2.1.0", lifespan=lifespan)
 
-# Static & Templates
+# Static & Templates — ensure directories exist (CI checkout may lack empty dirs)
+os.makedirs("src/static", exist_ok=True)
 app.mount("/static", StaticFiles(directory="src/static"), name="static")
 templates = Jinja2Templates(directory="src/templates")
 
