@@ -6,6 +6,7 @@ import numpy as np
 
 from src.api.dependencies import get_db_dependency
 from src.models.response import HealthResponse, LatencyResponse
+from src.services.ml_service import get_ml_service
 
 router = APIRouter()
 
@@ -28,15 +29,14 @@ async def health_check(db: Connection = Depends(get_db_dependency)):
         pass
         
     # 2. Check ONNX Model (Lazy Import to prevent circular dependencies)
+    optimal_threshold = 0.0
+    global_mean = 0.0
     try:
-        # We will stub this out until Phase 5, but structure it properly
-        # from src.services.inference import get_session
-        # session = get_session()
-        # if session:
-        #     shape = session.get_inputs()[0].shape[1]
-        #     dummy = np.zeros((1, shape), dtype=np.float32)
-        #     session.run(None, {session.get_inputs()[0].name: dummy})
-        model_loaded = True
+        ml = get_ml_service()
+        ml_health = ml.health_check()
+        model_loaded = ml_health.get("model_loaded", True)
+        optimal_threshold = ml_health.get("optimal_threshold", 0.0)
+        global_mean = ml_health.get("global_mean", 0.0)
     except Exception:
         pass
         
@@ -47,7 +47,9 @@ async def health_check(db: Connection = Depends(get_db_dependency)):
         model_version=os.getenv("MODEL_VERSION", "v1.0.0"),
         db_connected=db_connected,
         model_loaded=model_loaded,
-        uptime_s=round(time.time() - start_time, 2)
+        uptime_s=round(time.time() - start_time, 2),
+        optimal_threshold=optimal_threshold,
+        global_mean=global_mean
     )
 
 @router.get("/latency", response_model=LatencyResponse)

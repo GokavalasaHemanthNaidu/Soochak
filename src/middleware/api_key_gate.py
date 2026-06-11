@@ -18,8 +18,9 @@ async def api_key_gate(request: Request):
 
     # Allow dashboard form submissions
     referer = request.headers.get("referer", "")
-    if request.url.path == "/v1/predict" and referer.endswith("/"):
+    if request.url.path in ("/v1/predict", "/v1/predict/") and referer.endswith("/"):
         return
+
 
     api_key = request.headers.get("X-API-Key")
     if api_key != DEMO_KEY:

@@ -25,7 +25,7 @@ SOOCHAK predicts fatal road accidents using real India FIR data, explains the pr
 
 ## ⚠️ Deployment Limitations (Render Free Tier)
 This application uses **SQLite** in WAL mode for zero-infrastructure deployment.
-*   **Ephemeral Storage**: Because it runs on Render's free tier, the SQLite database (`roadrisk.db`) is ephemeral. It resets when the container restarts.
+*   **Ephemeral Storage**: Because it runs on Render's free tier, the SQLite database (`soochak.db`) is ephemeral. It resets when the container restarts.
 *   **Upgrade Path**: For production, the `DB_PATH` and `aiosqlite` connection should be swapped out for a managed PostgreSQL database (e.g., Supabase, Neon) using Asyncpg.
 
 ---
@@ -33,9 +33,36 @@ This application uses **SQLite** in WAL mode for zero-infrastructure deployment.
 ## 🏗️ Architecture
 *Architecture diagram / ADRs placeholder*
 
+### ML Inference & Calibration
+The isotonic calibrator corrects systematic overconfidence from the XGBoost model. Raw probabilities of ~0.60 are calibrated down to ~0.21, reflecting the true 15.4% base rate of the dataset. The optimal decision threshold of `0.18` maximizes F1 on the hold-out calibration set.
+
+### Calibration Behavior
+
+| Stage | Probability | Interpretation |
+|-------|-------------|----------------|
+| Raw XGBoost | ~0.52 | Overconfident — model thinks 52% fatal |
+| Isotonic calibrated | ~0.20 | Corrected — matches true ~15% base rate |
+| Decision threshold | 0.18 | Captures upper tail of risk distribution |
+
+The raw-to-calibrated compression is expected and correct. It reflects the model learning spurious correlations from limited features and the calibrator correcting for this overconfidence using the hold-out set.
+
+### Data Limitations & Target Encoding Pitfalls
+
+The model uses target encoding for `State_Risk_Score` and `Weather_Risk`. Rare categories with few samples can produce unreliable encodings:
+
+| Category | Samples | Target Encoding | Reliability |
+|----------|---------|-----------------|-------------|
+| "Normal" weather | High | 0.1603 | ✅ Reliable |
+| "Raining" | Medium | 0.1288 | ✅ Reliable |
+| "Windy" | Medium | 0.1639 | ✅ Reliable |
+| "Fog or mist" | Very low | 0.0000 | ⚠️ Unreliable — zero fatal samples in training |
+
+**Impact:** The model underestimates risk for fog because the training data happened to have no fatal fog accidents. This is a known limitation of target encoding on imbalanced categorical data, not a model bug. The threshold of 0.18 is calibrated against reliable categories.
+
+
 ## 📁 Project Structure
 ```text
-roadrisk/
+soochak/
 ├── src/api/routers/
 ├── src/services/
 ├── src/db/migrations/

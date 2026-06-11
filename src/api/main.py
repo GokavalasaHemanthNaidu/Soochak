@@ -12,6 +12,7 @@ from src.db.database import init_db, get_db
 from src.middleware.rate_limiter import rate_limiter
 from src.middleware.api_key_gate import api_key_gate
 from src.api.routers import health, predict, monitoring
+from src.services.ml_service import get_ml_service
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -23,12 +24,21 @@ async def lifespan(app: FastAPI):
     logger.info("Initializing database...")
     await init_db()
     
+    logger.info("Eagerly loading ML Service artifacts...")
+    try:
+        get_ml_service()
+    except Exception as e:
+        logger.error(f"Fatal error loading ML Service: {e}")
+        raise e
+        
     app.state.model = None
     app.state.calibrator = None
     app.state.model_version = os.getenv("MODEL_VERSION", "v1.0.0")
     
     # We will seed the model registry here if Phase 7 exists later
-    # and we will start the batch consumer here in Phase 6
+    # Phase 6: Start background batch consumer task
+    from src.services.batch_service import batch_consumer
+    asyncio.create_task(batch_consumer())
     
     logger.info("Application startup complete.")
     yield
@@ -102,9 +112,18 @@ async def _log_request(request: Request, status_code: int, latency_ms: float):
         logger.error(f"Failed to log request: {e}")
 
 # Include Routers
+from src.api.routers.predict import cf_router
+from src.api.routers import explain, batch, incidents, feedback
+
 app.include_router(health.router, prefix="/v1")
 app.include_router(predict.router, prefix="/v1")
+app.include_router(cf_router, prefix="/v1")
+app.include_router(explain.router, prefix="/v1")
+app.include_router(batch.router, prefix="/v1")
 app.include_router(monitoring.router, prefix="/v1")
+app.include_router(incidents.router, prefix="/v1")
+app.include_router(feedback.router, prefix="/v1")
+
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_dashboard(request: Request):

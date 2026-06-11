@@ -37,7 +37,7 @@ async def test_api_key_required_for_post(client, test_db):
     """POST without X-API-Key should be blocked with 403."""
     payload = {"dummy": "data"}
     # No headers
-    response = await client.post("/v1/predict", json=payload)
+    response = await client.post("/v1/predict/", json=payload)
     assert response.status_code == 403
     
 @pytest.mark.asyncio
@@ -45,17 +45,17 @@ async def test_dashboard_referer_allowed_for_post(client, test_db):
     """POST from dashboard (Referer ends with /) is allowed."""
     headers = {"Referer": "http://test/"}
     payload = {
-        "road_type": "National Highway",
-        "speed_limit": 80,
-        "weather": "Clear",
-        "lighting": "Daylight",
-        "junction": "None",
-        "junction_ctrl": "None",
-        "vehicle_type": "Car",
-        "driver_age": "26-40",
-        "urban_rural": "Urban",
-        "state": "Delhi",
-        "city": "New Delhi"
+        "Road_Type": "Undivided Two way",
+        "Speed_Limit": 80,
+        "Weather": "Windy",
+        "Lighting": "Darkness - no lighting",
+        "Junction": "Crossing",
+        "Junction_Control": "Drunk driving",
+        "Vehicle_Type": "Motorcycle",
+        "Driver_Age": "Under 18",
+        "Urban_Rural": "Rural village areas",
+        "State": "Steep grade upward with mountainous terrain",
+        "City": "Saturday"
     }
-    response = await client.post("/v1/predict", json=payload, headers=headers)
+    response = await client.post("/v1/predict/", json=payload, headers=headers)
     assert response.status_code == 200

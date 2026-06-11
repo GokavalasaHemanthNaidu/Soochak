@@ -1,0 +1,216 @@
+{
+  "feature_names": [
+    "Road_Type",
+    "Speed_Limit",
+    "Weather",
+    "Lighting",
+    "Junction",
+    "Junction_Control",
+    "Vehicle_Type",
+    "Driver_Age",
+    "Urban_Rural",
+    "State",
+    "City",
+    "State_Risk_Score",
+    "Weather_Risk",
+    "Road_Geometry_Index"
+  ],
+  "feature_count": 14,
+  "categorical_encoders": {
+    "Road_Type": [
+      "Double carriageway (median)",
+      "One way",
+      "Two-way (divided with broken lines road marking)",
+      "Two-way (divided with solid lines road marking)",
+      "Undivided Two way",
+      "Unknown",
+      "other"
+    ],
+    "Weather": [
+      "Cloudy",
+      "Fog or mist",
+      "Normal",
+      "Other",
+      "Raining",
+      "Raining and Windy",
+      "Snow",
+      "Unknown",
+      "Windy"
+    ],
+    "Lighting": [
+      "Darkness - lights lit",
+      "Darkness - lights unlit",
+      "Darkness - no lighting",
+      "Daylight"
+    ],
+    "Junction": [
+      "Crossing",
+      "No junction",
+      "O Shape",
+      "Other",
+      "T Shape",
+      "Unknown",
+      "X Shape",
+      "Y Shape"
+    ],
+    "Junction_Control": [
+      "Changing lane to the left",
+      "Changing lane to the right",
+      "Driving at high speed",
+      "Driving carelessly",
+      "Driving to the left",
+      "Driving under the influence of drugs",
+      "Drunk driving",
+      "Getting off the vehicle improperly",
+      "Improper parking",
+      "Moving Backward",
+      "No distancing",
+      "No priority to pedestrian",
+      "No priority to vehicle",
+      "Other",
+      "Overloading",
+      "Overspeed",
+      "Overtaking",
+      "Overturning",
+      "Turnover",
+      "Unknown"
+    ],
+    "Vehicle_Type": [
+      "Automobile",
+      "Bajaj",
+      "Bicycle",
+      "Long lorry",
+      "Lorry (11?40Q)",
+      "Lorry (41?100Q)",
+      "Motorcycle",
+      "Other",
+      "Pick up upto 10Q",
+      "Public (12 seats)",
+      "Public (13?45 seats)",
+      "Public (> 45 seats)",
+      "Ridden horse",
+      "Special vehicle",
+      "Stationwagen",
+      "Taxi",
+      "Turbo"
+    ],
+    "Driver_Age": [
+      "18-30",
+      "31-50",
+      "Over 51",
+      "Under 18",
+      "Unknown"
+    ],
+    "Urban_Rural": [
+      "Church areas",
+      "Hospital areas",
+      "Industrial areas",
+      "Market areas",
+      "Office areas",
+      "Other",
+      "Outside rural areas",
+      "Recreational areas",
+      "Residential areas",
+      "Rural village areas",
+      "Rural village areasOffice areas",
+      "School areas",
+      "Unknown"
+    ],
+    "State": [
+      "Escarpments",
+      "Gentle horizontal curve",
+      "Sharp reverse curve",
+      "Steep grade downward with mountainous terrain",
+      "Steep grade upward with mountainous terrain",
+      "Tangent road with flat terrain",
+      "Tangent road with mild grade and flat terrain",
+      "Tangent road with mountainous terrain and",
+      "Tangent road with rolling terrain",
+      "Unknown"
+    ],
+    "City": [
+      "Friday",
+      "Monday",
+      "Saturday",
+      "Sunday",
+      "Thursday",
+      "Tuesday",
+      "Wednesday"
+    ]
+  },
+  "target_encodings": {
+    "State_Risk_Score": {
+      "mapping": {
+        "Escarpments": 0.15714285714285714,
+        "Gentle horizontal curve": 0.18,
+        "Sharp reverse curve": 0.1282051282051282,
+        "Steep grade downward with mountainous terrain": 0.15172413793103448,
+        "Steep grade upward with mountainous terrain": 0.375,
+        "Tangent road with flat terrain": 0.15453594380511135,
+        "Tangent road with mild grade and flat terrain": 0.14018691588785046,
+        "Tangent road with mountainous terrain and": 0.12916666666666668,
+        "Tangent road with rolling terrain": 0.2727272727272727,
+        "Unknown": 0.18478260869565216
+      },
+      "global_mean": 0.1544220276614643
+    },
+    "Weather_Risk": {
+      "mapping": {
+        "Cloudy": 0.0759493670886076,
+        "Fog or mist": 0.0,
+        "Normal": 0.16037151702786379,
+        "Other": 0.1,
+        "Raining": 0.1288782816229117,
+        "Raining and Windy": 0.037037037037037035,
+        "Snow": 0.10810810810810811,
+        "Unknown": 0.18032786885245902,
+        "Windy": 0.16393442622950818
+      },
+      "global_mean": 0.1544220276614643
+    }
+  },
+  "base_value": 0.5308434221730036,
+  "inference_settings": {
+    "optimal_threshold_calibrated": 0.18,
+    "confidence_high_below": 0.2,
+    "confidence_high_above": 0.8,
+    "confidence_medium_below": 0.35,
+    "confidence_medium_above": 0.65
+  },
+  "model_params": {
+    "max_depth": 4,
+    "learning_rate": 0.06512831245931403,
+    "n_estimators": 246,
+    "min_child_weight": 5,
+    "subsample": 0.6903351044043183,
+    "colsample_bytree": 0.8395505804205186,
+    "gamma": 1.0559892906549488,
+    "reg_alpha": 4.103591141855201,
+    "reg_lambda": 3.351956048250137e-07,
+    "objective": "binary:logistic",
+    "eval_metric": "logloss",
+    "scale_pos_weight": 5.475760065735415,
+    "tree_method": "hist",
+    "random_state": 42,
+    "n_jobs": -1
+  },
+  "performance": {
+    "f1_score": 0.23335826477187735,
+    "roc_auc": 0.5429424689362562,
+    "precision_fatal": 0.16300940438871472,
+    "recall_fatal": 0.4105263157894737,
+    "training_rows": 7881,
+    "test_rows": 2464
+  },
+  "onnx_input_shape": [
+    null,
+    14
+  ],
+  "target_definition": "1 = Serious Injury OR Fatal Injury; 0 = Slight Injury",
+  "dataset": "s3programmer/road-accident-severity-in-india (Road.csv)",
+  "model_limitations": [
+    "Dataset lacks critical causal features: impact speed, seatbelt usage, blood alcohol, airbag deployment",
+    "Speed_Limit is a proxy derived from road geometry type, not actual recorded speed",
+    "Junction_Control is mapped from Cause_of_accident as a behavioral proxy"
+  ]
+}

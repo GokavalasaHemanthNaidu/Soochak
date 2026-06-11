@@ -1,84 +1,174 @@
-import html
-from typing import Literal, Optional, List
-from pydantic import BaseModel, Field, model_validator, field_validator
+"""Pydantic request models for the SOOCHAK prediction API.
+
+Relaxed from strict Literal constraints to generic str to support
+any geographic dataset (Ethiopian, Indian, etc.) via OrdinalEncoder fallback.
+"""
+
+from pydantic import BaseModel, Field, field_validator
+from typing import Optional, List
+
+
 
 class PredictRequest(BaseModel):
-    road_type: Literal["National Highway", "State Highway", "City Road", "Rural Road", "Expressway"]
-    speed_limit: Optional[int] = Field(ge=10, le=120)
-    weather: Literal["Clear", "Rainy", "Foggy", "Snow", "Dust Storm", "Cloudy"]
-    lighting: Literal["Daylight", "Darkness - well lit", "Darkness - no lighting", "Dusk", "Dawn"]
-    junction: Literal["None", "Crossroads", "T-Junction", "Y-Junction", "Roundabout"]
-    junction_ctrl: Optional[Literal["None", "Traffic Light", "Stop Sign", "Yield Sign"]]
-    vehicle_type: str = Field(max_length=50)
-    driver_age: Literal["Under 18", "18-25", "26-40", "41-60", "Over 60"]
-    urban_rural: Literal["Urban", "Rural"]
-    state: str = Field(max_length=50)
-    city: str = Field(max_length=50)
+    """Request model for accident severity prediction.
 
-    @field_validator("speed_limit")
+    All categorical fields accept any string. The production pipeline uses
+    OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1)
+    to safely map unseen categories to -1 without crashing.
+
+    Target-encoded features (State_Risk_Score, Weather_Risk) are computed
+    internally from the raw categorical inputs.
+    """
+
+    # ── Categorical Features (10) ────────────────────────────────────────────
+    Road_Type: str = Field(
+        ..., max_length=100,
+        description="Road geometry type, e.g. 'Undivided Two way', 'National Highway'",
+        examples=["Undivided Two way", "Double carriageway (median)"]
+    )
+    Weather: str = Field(
+        ..., max_length=50,
+        description="Weather conditions at time of accident",
+        examples=["Normal", "Rain", "Fog or mist"]
+    )
+    Lighting: str = Field(
+        ..., max_length=50,
+        description="Lighting conditions",
+        examples=["Daylight", "Darkness - lights lit", "Dawn"]
+    )
+    Junction: str = Field(
+        ..., max_length=100,
+        description="Junction type where accident occurred",
+        examples=["No junction", "T Junction", "Crossing"]
+    )
+    Junction_Control: str = Field(
+        ..., max_length=100,
+        description="Behavioral proxy from cause of accident (dataset limitation)",
+        examples=["No distancing", "Changing lane to the right", "Other"]
+    )
+    Vehicle_Type: str = Field(
+        ..., max_length=50,
+        description="Type of vehicle involved",
+        examples=["Automobile", "Lorry (41?100Q)", "Public (12 seats)"]
+    )
+    Driver_Age: str = Field(
+        ..., max_length=30,
+        description="Age band of driver",
+        examples=["18-30", "31-50", "Over 51", "Under 18"]
+    )
+    Urban_Rural: str = Field(
+        ..., max_length=100,
+        description="Area classification",
+        examples=["Residential areas", "Office areas", "Rural village areas"]
+    )
+    State: str = Field(
+        ..., max_length=100,
+        description="Road alignment / state proxy (dataset uses road alignment)",
+        examples=["Tangent road with flat terrain", "Steep grade"]
+    )
+    City: str = Field(
+        ..., max_length=50,
+        description="Temporal proxy from day of week (dataset limitation)",
+        examples=["Monday", "Friday", "Sunday"]
+    )
+
+    # ── Numerical Feature (1) ────────────────────────────────────────────────
+    Speed_Limit: int = Field(
+        ..., ge=0, le=200,
+        description="Speed limit of the road (km/h). Proxy derived from road geometry.",
+        examples=[60, 80, 40]
+    )
+
+    # ── Optional: Raw target-encoding inputs ─────────────────────────────────
+    # These are used internally; clients do not send them directly.
+    # State_Risk_Score and Weather_Risk are computed from State and Weather.
+
+    @field_validator('Road_Type', 'Weather', 'Lighting', 'Junction', 
+                     'Junction_Control', 'Vehicle_Type', 'Driver_Age',
+                     'Urban_Rural', 'State', 'City', mode='before')
     @classmethod
-    def validate_speed(cls, v):
-        if v not in [10, 20, 30, 40, 50, 60, 70, 80, 100, 120]:
-            raise ValueError("Speed limit must be a standard value (10, 20... 120)")
+    def strip_strings(cls, v):
+        """Strip whitespace from all string inputs to prevent encoding mismatches."""
+        if isinstance(v, str):
+            return v.strip()
         return v
 
-    @field_validator("vehicle_type", "state", "city")
-    @classmethod
-    def sanitize_text(cls, v):
-        if v:
-            clean = html.escape(v.strip())
-            clean = clean.replace("script", "").replace("javascript:", "")
-            return clean
-        return v
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "Road_Type": "Undivided Two way",
+                "Speed_Limit": 60,
+                "Weather": "Normal",
+                "Lighting": "Daylight",
+                "Junction": "No junction",
+                "Junction_Control": "No distancing",
+                "Vehicle_Type": "Automobile",
+                "Driver_Age": "18-30",
+                "Urban_Rural": "Residential areas",
+                "State": "Tangent road with flat terrain",
+                "City": "Monday"
+            }
+        }
+
 
 class CounterfactualRequest(BaseModel):
-    incident_id: int = Field(gt=0)
-    feature_to_change: Literal["speed_limit", "road_type", "lighting", "weather", "junction_ctrl"]
-    new_value: str = Field(max_length=50)
+    """Request model for what-if counterfactual simulation."""
+    incident_id: int = Field(..., description="Original incident ID in database")
+    feature_to_change: str = Field(..., description="Feature name to change (e.g. 'Speed_Limit', 'Weather')")
+    new_value: str = Field(..., description="New value for the feature")
 
-    @model_validator(mode='after')
-    def validate_domain(self):
-        feat = self.feature_to_change
-        val = self.new_value
-        
-        if feat == "speed_limit":
-            if val not in ["10", "20", "30", "40", "50", "60", "70", "80", "100", "120"]:
-                raise ValueError("Invalid speed limit")
-        elif feat == "road_type":
-            valid = ["National Highway", "State Highway", "City Road", "Rural Road", "Expressway"]
-            if val not in valid:
-                raise ValueError(f"Invalid road_type. Must be one of {valid}")
-        elif feat == "lighting":
-            valid = ["Daylight", "Darkness - well lit", "Darkness - no lighting", "Dusk", "Dawn"]
-            if val not in valid:
-                raise ValueError(f"Invalid lighting. Must be one of {valid}")
-        elif feat == "weather":
-            valid = ["Clear", "Rainy", "Foggy", "Snow", "Dust Storm", "Cloudy"]
-            if val not in valid:
-                raise ValueError(f"Invalid weather. Must be one of {valid}")
-        elif feat == "junction_ctrl":
-            valid = ["None", "Traffic Light", "Stop Sign", "Yield Sign"]
-            if val not in valid:
-                raise ValueError(f"Invalid junction_ctrl. Must be one of {valid}")
-        
-        return self
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "incident_id": 1,
+                "feature_to_change": "Speed_Limit",
+                "new_value": "40"
+            }
+        }
 
-class ExplainRequest(BaseModel):
-    prediction_id: int = Field(gt=0)
 
 class BatchPredictRequest(BaseModel):
-    incidents: List[PredictRequest] = Field(max_length=1000)
+    """Request model for batch incident predictions."""
+    incidents: List[PredictRequest] = Field(..., description="List of incidents to predict")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "incidents": [
+                    {
+                        "Road_Type": "Undivided Two way",
+                        "Speed_Limit": 60,
+                        "Weather": "Normal",
+                        "Lighting": "Daylight",
+                        "Junction": "No junction",
+                        "Junction_Control": "No distancing",
+                        "Vehicle_Type": "Automobile",
+                        "Driver_Age": "18-30",
+                        "Urban_Rural": "Residential areas",
+                        "State": "Tangent road with flat terrain",
+                        "City": "Monday"
+                    }
+                ]
+            }
+        }
+
+
+class ExplainRequest(BaseModel):
+    """Request model for prediction explanations."""
+    prediction_id: int = Field(..., description="SQLite row ID from predictions table")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "prediction_id": 1
+            }
+        }
+
 
 class FeedbackRequest(BaseModel):
-    prediction_id: int = Field(gt=0)
-    was_correct: Optional[int] = Field(ge=0, le=1)
-    human_label: Optional[int] = Field(ge=0, le=1)
+    prediction_id: int = Field(..., description="SQLite row ID from predictions table")
+    was_correct: Optional[int] = Field(None, ge=0, le=1, description="1 if prediction was correct, 0 if wrong")
+    human_label: Optional[int] = Field(None, ge=0, le=1, description="Human-assigned correct label")
 
-class IncidentQueryParams(BaseModel):
-    page: int = Field(default=1, ge=1)
-    limit: int = Field(default=50, ge=1, le=200)
-    severity: Optional[Literal["Fatal", "Non-Fatal"]] = None
-    state: Optional[str] = None
-    city: Optional[str] = None
-    date_from: Optional[str] = None
-    date_to: Optional[str] = None
+
+
