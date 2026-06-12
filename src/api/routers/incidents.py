@@ -25,30 +25,33 @@ async def list_incidents(
     params = []
 
     if severity:
-        conditions.append("severity_true = ?")
+        conditions.append("i.severity_true = ?")
         params.append(1 if severity == "fatal" else 0)
     if state:
-        conditions.append("state = ?")
+        conditions.append("i.state = ?")
         params.append(state)
     if city:
-        conditions.append("city = ?")
+        conditions.append("i.city = ?")
         params.append(city)
     if date_from:
-        conditions.append("datetime >= ?")
+        conditions.append("i.datetime >= ?")
         params.append(date_from)
     if date_to:
-        conditions.append("datetime <= ?")
+        conditions.append("i.datetime <= ?")
         params.append(date_to)
 
     where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
 
-    count_sql = f"SELECT COUNT(*) FROM incidents {where_clause}"
+    count_sql = f"SELECT COUNT(*) FROM incidents i {where_clause}"
     async with db.execute(count_sql, params) as cursor:
         total = (await cursor.fetchone())[0]
 
     offset = (page - 1) * limit
-    sql = f"""SELECT * FROM incidents {where_clause}
-              ORDER BY created_at DESC LIMIT ? OFFSET ?"""
+    sql = f"""SELECT i.*, p.predicted_class 
+              FROM incidents i 
+              LEFT JOIN predictions p ON i.id = p.incident_id 
+              {where_clause}
+              ORDER BY i.created_at DESC LIMIT ? OFFSET ?"""
     async with db.execute(sql, params + [limit, offset]) as cursor:
         rows = await cursor.fetchall()
 

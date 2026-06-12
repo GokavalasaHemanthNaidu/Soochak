@@ -82,8 +82,9 @@ app.add_middleware(
 @app.middleware("http")
 async def apply_custom_middlewares(request: Request, call_next):
     try:
-        # 1. Rate Limiting
-        await rate_limiter.check(request)
+        # 1. Rate Limiting (Only for API endpoints)
+        if request.url.path.startswith("/v1/"):
+            await rate_limiter.check(request)
 
         # 2. API Key Gate for bot protection
         await api_key_gate(request)

@@ -130,6 +130,7 @@ class IncidentResponse(BaseModel):
     lat: Optional[float] = None
     lng: Optional[float] = None
     severity_true: Optional[int] = None
+    predicted_class: Optional[int] = None
     source: str = "api"
     created_at: Optional[str] = None
 

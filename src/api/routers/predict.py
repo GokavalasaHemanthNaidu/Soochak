@@ -54,32 +54,54 @@ async def predict(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Inference error: {str(e)}"
         )
 
-    # Persist to SQLite using async connection
+    # Check for identical existing incident
     cursor = await db.execute(
         """
-        INSERT INTO incidents (
-            datetime, road_type, speed_limit, weather, lighting,
-            junction, junction_ctrl, vehicle_type, driver_age,
-            urban_rural, state, city
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """,
+        SELECT id FROM incidents WHERE 
+            road_type IS ? AND speed_limit IS ? AND weather IS ? AND lighting IS ? AND
+            junction IS ? AND junction_ctrl IS ? AND vehicle_type IS ? AND driver_age IS ? AND
+            urban_rural IS ? AND state IS ? AND city IS ?
+        ORDER BY created_at DESC LIMIT 1
+        """,
         (
-            datetime.utcnow().isoformat(),
-            request.Road_Type,
-            request.Speed_Limit,
-            request.Weather,
-            request.Lighting,
-            request.Junction,
-            request.Junction_Control,
-            request.Vehicle_Type,
-            request.Driver_Age,
-            request.Urban_Rural,
-            request.State,
-            request.City,
-        ),
+            request.Road_Type, request.Speed_Limit, request.Weather, request.Lighting,
+            request.Junction, request.Junction_Control, request.Vehicle_Type, request.Driver_Age,
+            request.Urban_Rural, request.State, request.City
+        )
     )
-    await db.commit()
-    incident_id = cursor.lastrowid
+    existing_incident = await cursor.fetchone()
+
+    if existing_incident:
+        incident_id = existing_incident[0]
+        cache_hit = 1
+    else:
+        # Persist to SQLite using async connection
+        cursor = await db.execute(
+            """
+            INSERT INTO incidents (
+                datetime, road_type, speed_limit, weather, lighting,
+                junction, junction_ctrl, vehicle_type, driver_age,
+                urban_rural, state, city
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+            (
+                datetime.utcnow().isoformat(),
+                request.Road_Type,
+                request.Speed_Limit,
+                request.Weather,
+                request.Lighting,
+                request.Junction,
+                request.Junction_Control,
+                request.Vehicle_Type,
+                request.Driver_Age,
+                request.Urban_Rural,
+                request.State,
+                request.City,
+            ),
+        )
+        await db.commit()
+        incident_id = cursor.lastrowid
+        cache_hit = 0
 
     # 2. Insert prediction outputs referencing incident_id
     model_version = "soochak_v1"
@@ -98,7 +120,7 @@ async def predict(
             json.dumps(result["top_features"]),
             result["shap_base_value"],
             result["inference_ms"],
-            0,  # Not cached in this basic predict call
+            cache_hit,  # Uses the variable calculated above
         ),
     )
     await db.commit()

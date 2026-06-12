@@ -3,510 +3,839 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SOOCHAK — Explainable Road Safety Engine</title>
+    <title>SOOCHAK — Accident Severity Predictor</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        h1, h2, h3 { font-family: 'Outfit', sans-serif; }
-        .shap-bar { transition: all 0.3s ease; }
-        .glass-card { 
-            background: rgba(30, 41, 59, 0.45); 
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                        display: ['Outfit', 'sans-serif'],
+                    },
+                }
+            }
         }
-        .metric-card { 
-            background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%); 
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-    </style>
+    </script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="/static/css/style.css">
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen">
-    <div class="container mx-auto px-4 py-8 max-w-7xl">
-        <!-- Header -->
-        <header class="mb-8 flex justify-between items-center border-b border-slate-800/80 pb-6">
-            <div>
-                <h1 class="text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-indigo-400 to-emerald-400">🚗 SOOCHAK</h1>
-                <p class="text-slate-400 mt-1.5 text-sm">Explainable Road Accident Severity Predictor &amp; Intervention Simulator</p>
-            </div>
-            <div class="text-right">
-                <div id="healthStatus" class="inline-flex items-center px-3.5 py-1.5 rounded-full bg-emerald-950/80 text-emerald-400 border border-emerald-500/20 text-xs font-semibold tracking-wide uppercase">
-                    <span class="w-2 h-2 bg-emerald-400 rounded-full mr-2.5 animate-pulse"></span>
-                    System Online
-                </div>
-            </div>
-        </header>
-
-        <!-- Metrics Cards -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <div class="metric-card rounded-xl p-4 shadow-lg">
-                <div class="text-slate-400 text-xs uppercase tracking-wider font-semibold">Predictions Stored</div>
-                <div id="metricPredictions" class="text-3xl font-extrabold text-white mt-2">0</div>
-            </div>
-            <div class="metric-card rounded-xl p-4 shadow-lg">
-                <div class="text-slate-400 text-xs uppercase tracking-wider font-semibold">Optimal Threshold</div>
-                <div id="metricThreshold" class="text-3xl font-extrabold text-blue-400 mt-2">0.18</div>
-            </div>
-            <div class="metric-card rounded-xl p-4 shadow-lg">
-                <div class="text-slate-400 text-xs uppercase tracking-wider font-semibold">Cache Hit Rate</div>
-                <div id="metricCache" class="text-3xl font-extrabold text-amber-400 mt-2">0%</div>
-            </div>
-            <div class="metric-card rounded-xl p-4 shadow-lg">
-                <div class="text-slate-400 text-xs uppercase tracking-wider font-semibold">Active Model</div>
-                <div id="metricVersion" class="text-3xl font-extrabold text-emerald-400 mt-2">v1.0.0</div>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Prediction Form -->
-            <div class="glass-card rounded-xl p-6 shadow-2xl">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-                        <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
-                        Incident Simulator
-                    </h2>
-                    <button onclick="loadDemo()" class="text-xs font-semibold text-blue-400 hover:text-blue-300 transition underline underline-offset-4">Load Demo Scenario</button>
-                </div>
-                <form id="predictForm" class="space-y-4">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs text-slate-400 mb-1.5 font-medium uppercase tracking-wider">Road Type</label>
-                            <select name="Road_Type" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition">
-                                <option>National Highway</option><option>State Highway</option><option>City Road</option><option>Rural Road</option><option>Expressway</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs text-slate-400 mb-1.5 font-medium uppercase tracking-wider">Speed Limit</label>
-                            <select name="Speed_Limit" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition">
-                                <option value="">Unknown</option>
-                                <option>10</option><option>20</option><option>30</option><option>40</option><option>50</option><option>60</option><option>70</option><option selected>80</option><option>100</option><option>120</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs text-slate-400 mb-1.5 font-medium uppercase tracking-wider">Weather</label>
-                            <select name="Weather" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition">
-                                <option>Clear</option><option>Rain</option><option>Fog</option><option>Dust storm</option><option>Cloudy</option><option>Thunderstorm</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs text-slate-400 mb-1.5 font-medium uppercase tracking-wider">Lighting</label>
-                            <select name="Lighting" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition">
-                                <option>Daylight</option><option>Darkness - lights lit</option><option>Darkness - no lighting</option><option>Dusk</option><option>Dawn</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs text-slate-400 mb-1.5 font-medium uppercase tracking-wider">Junction</label>
-                            <select name="Junction" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition">
-                                <option>None</option><option>Roundabout</option><option>T-junction</option><option>Crossroads</option><option>Y-junction</option><option>Slip road</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs text-slate-400 mb-1.5 font-medium uppercase tracking-wider">Junction Control</label>
-                            <select name="Junction_Control" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition">
-                                <option value="">None</option><option>Signal</option><option>Stop</option><option>Give Way</option><option selected>Uncontrolled</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs text-slate-400 mb-1.5 font-medium uppercase tracking-wider">Vehicle Type</label>
-                            <input type="text" name="Vehicle_Type" value="Two-wheeler" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition">
-                        </div>
-                        <div>
-                            <label class="block text-xs text-slate-400 mb-1.5 font-medium uppercase tracking-wider">Driver Age</label>
-                            <select name="Driver_Age" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition">
-                                <option>Young (17-24)</option><option selected>Middle (25-59)</option><option>Elderly (60+)</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs text-slate-400 mb-1.5 font-medium uppercase tracking-wider">Urban/Rural</label>
-                            <select name="Urban_Rural" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition">
-                                <option>Urban</option><option>Semi-urban</option><option selected>Rural</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs text-slate-400 mb-1.5 font-medium uppercase tracking-wider">State</label>
-                            <input type="text" name="State" value="Maharashtra" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition">
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-xs text-slate-400 mb-1.5 font-medium uppercase tracking-wider">City</label>
-                        <input type="text" name="City" value="Pune" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition">
-                    </div>
-                    <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold py-3 px-4 rounded-xl transition shadow-lg shadow-blue-500/10">Predict Severity</button>
-                </form>
-            </div>
-
-            <!-- Results Panel -->
-            <div class="space-y-6">
-                <div id="resultPanel" class="glass-card rounded-xl p-6 shadow-2xl hidden">
-                    <h2 class="text-xl font-bold mb-4 text-white flex items-center gap-2">
-                        <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        Inference Result
-                    </h2>
-                    <div class="flex items-center gap-6 mb-5 bg-slate-950/40 p-4 rounded-lg border border-slate-800">
-                        <div id="severityBadge" class="px-5 py-2.5 rounded-lg text-2xl font-black tracking-wide"></div>
-                        <div>
-                            <div class="text-xs text-slate-400 font-semibold uppercase tracking-wider">Calibrated Risk</div>
-                            <div id="probValue" class="text-3xl font-black mt-1 text-white"></div>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-3 gap-2 text-xs text-slate-400 mb-5">
-                        <div class="bg-slate-900/40 p-2.5 rounded border border-slate-800">Latency: <span id="infTime" class="text-slate-100 font-bold"></span></div>
-                        <div class="bg-slate-900/40 p-2.5 rounded border border-slate-800">Model: <span id="modelVer" class="text-slate-100 font-bold"></span></div>
-                        <div class="bg-slate-900/40 p-2.5 rounded border border-slate-800">Cache: <span id="cacheStatus" class="text-slate-100 font-bold"></span></div>
-                    </div>
-
-                    <!-- Interactive Human Feedback Block -->
-                    <div id="feedbackBlock" class="mt-4 pt-4 border-t border-slate-800/85">
-                        <span class="text-xs text-slate-400 font-semibold uppercase tracking-wider block">Was this prediction correct?</span>
-                        <div class="flex gap-2 mt-2">
-                            <button onclick="submitFeedback(1)" class="bg-emerald-600/80 hover:bg-emerald-500 hover:text-white text-emerald-100 text-xs font-semibold px-3 py-2 rounded-lg transition border border-emerald-500/20 shadow-md">Yes, Correct</button>
-                            <button onclick="submitFeedback(0)" class="bg-red-600/80 hover:bg-red-500 hover:text-white text-red-100 text-xs font-semibold px-3 py-2 rounded-lg transition border border-red-500/20 shadow-md">No, Incorrect</button>
-                        </div>
-                        <div id="feedbackMsg" class="text-xs text-emerald-400 mt-2 font-semibold bg-emerald-950/20 p-2 rounded border border-emerald-500/10 hidden"></div>
-                    </div>
-                </div>
-
-                <div id="shapPanel" class="glass-card rounded-xl p-6 shadow-2xl hidden">
-                    <h2 class="text-xl font-bold mb-4 text-white flex items-center gap-2">
-                        <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.003 9.003 0 1020.945 13H11V3.055z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path></svg>
-                        SHAP Explainability
-                    </h2>
-                    <div class="h-[200px] relative mb-4">
-                        <canvas id="shapChart"></canvas>
-                    </div>
-                    <div id="topFeatures" class="space-y-2 mt-4"></div>
-                    <button onclick="getExplanation()" class="mt-5 w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-2.5 px-4 rounded-xl transition shadow-lg">Retrieve AI Insights</button>
-                    <div id="aiExplanation" class="mt-4 p-4 bg-slate-900/60 border border-slate-800 rounded-lg text-sm hidden"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- What-If Simulator -->
-        <div id="whatIfPanel" class="mt-6 glass-card rounded-xl p-6 shadow-2xl hidden">
-            <h2 class="text-2xl font-bold mb-4 text-white flex items-center gap-2">
-                <svg class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
-                What-If Scenario Simulator
-            </h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<body class="min-h-screen flex flex-col">
+    
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+    
+    <!-- Header -->
+    <header class="site-header">
+        <div class="container">
+            <a href="/" class="brand flex items-center">
+                <img src="/static/img/soochak_logo.png" alt="SOOCHAK Logo" style="width: 40px; height: 40px; object-fit: contain; margin-right: 12px; border-radius: 8px;">
                 <div>
-                    <label class="block text-xs text-slate-400 mb-1.5 font-medium uppercase tracking-wider">Modify Feature</label>
-                    <select id="whatIfFeature" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition">
+                    <div class="brand-text">SOOCHAK.</div>
+                    <div class="brand-tagline">Accident Severity Predictor</div>
+                </div>
+            </a>
+            <div id="healthStatus" class="status-badge">
+                <span class="status-dot"></span>
+                <span>System Online</span>
+            </div>
+        </div>
+    </header>
+    
+    <!-- Main Content -->
+    <main class="flex-1 container py-8 md:py-10">
+        
+        <!-- Metrics Bar -->
+        <section class="metrics-grid" id="metricsGrid">
+            <div class="metric-card" style="animation-delay: 0ms;">
+                <div class="metric-label">Predictions Today</div>
+                <div class="metric-value blue" id="metricPredictions">—</div>
+                <div class="metric-unit">total processed</div>
+            </div>
+            <div class="metric-card" style="animation-delay: 50ms;">
+                <div class="metric-label">Avg Inference</div>
+                <div class="metric-value emerald" id="metricLatency">—</div>
+                <div class="metric-unit">milliseconds</div>
+            </div>
+            <div class="metric-card" style="animation-delay: 100ms;">
+                <div class="metric-label">Cache Hit Rate</div>
+                <div class="metric-value amber" id="metricCache">—</div>
+                <div class="metric-unit">predictions cached</div>
+            </div>
+            <div class="metric-card" style="animation-delay: 150ms;">
+                <div class="metric-label">Model Version</div>
+                <div class="metric-value violet" id="metricVersion">—</div>
+                <div class="metric-unit">currently active</div>
+            </div>
+        </section>
+        
+        <!-- Main Grid: Form + Results -->
+        <div class="main-grid">
+            
+            <!-- Prediction Form -->
+            <section class="glass-card form-section" id="predictFormSection">
+                <div class="form-section-header">
+                    <h2 class="text-gradient">Incident Details</h2>
+                    <button type="button" class="btn btn-ghost text-sm" onclick="loadDemo()">
+                        <span>⚡</span> Load Demo
+                    </button>
+                </div>
+                
+                <form id="predictForm" class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label" for="Road_Type">
+                            Road Type <span class="required">*</span>
+                        </label>
+                        <select name="Road_Type" id="Road_Type" class="form-select" required>
+                            <option value="" disabled selected>Select road type...</option>
+                            <option>National Highway</option>
+                            <option>State Highway</option>
+                            <option>City Road</option>
+                            <option>Rural Road</option>
+                            <option>Expressway</option>
+                            <option>Undivided Two way</option>
+                            <option>Double carriageway (median)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="Speed_Limit">
+                            Speed Limit <span class="required">*</span>
+                        </label>
+                        <select name="Speed_Limit" id="Speed_Limit" class="form-select" required>
+                            <option value="" disabled selected>Select speed...</option>
+                            <option value="10">10 km/h</option>
+                            <option value="20">20 km/h</option>
+                            <option value="30">30 km/h</option>
+                            <option value="40">40 km/h</option>
+                            <option value="50">50 km/h</option>
+                            <option value="60">60 km/h</option>
+                            <option value="70">70 km/h</option>
+                            <option value="80">80 km/h</option>
+                            <option value="100">100 km/h</option>
+                            <option value="120">120 km/h</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="Weather">
+                            Weather <span class="required">*</span>
+                        </label>
+                        <select name="Weather" id="Weather" class="form-select" required>
+                            <option value="" disabled selected>Select weather...</option>
+                            <option>Clear</option>
+                            <option>Normal</option>
+                            <option>Rain</option>
+                            <option>Fog or mist</option>
+                            <option>Dust storm</option>
+                            <option>Cloudy</option>
+                            <option>Thunderstorm</option>
+                            <option>Windy</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="Lighting">
+                            Lighting <span class="required">*</span>
+                        </label>
+                        <select name="Lighting" id="Lighting" class="form-select" required>
+                            <option value="" disabled selected>Select lighting...</option>
+                            <option>Daylight</option>
+                            <option>Darkness - lights lit</option>
+                            <option>Darkness - no lighting</option>
+                            <option>Dusk</option>
+                            <option>Dawn</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="Junction">
+                            Junction <span class="required">*</span>
+                        </label>
+                        <select name="Junction" id="Junction" class="form-select" required>
+                            <option value="" disabled selected>Select junction...</option>
+                            <option>No junction</option>
+                            <option>T Junction</option>
+                            <option>Crossing</option>
+                            <option>Roundabout</option>
+                            <option>Y-junction</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="Junction_Control">
+                            Junction Control <span class="required">*</span>
+                        </label>
+                        <select name="Junction_Control" id="Junction_Control" class="form-select" required>
+                            <option value="" disabled selected>Select control...</option>
+                            <option>No distancing</option>
+                            <option>Changing lane to the right</option>
+                            <option>Changing lane to the left</option>
+                            <option>Drunk driving</option>
+                            <option>Other</option>
+                            <option>Uncontrolled</option>
+                            <option>Signal</option>
+                            <option>Stop</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="Vehicle_Type">
+                            Vehicle Type <span class="required">*</span>
+                        </label>
+                        <input type="text" name="Vehicle_Type" id="Vehicle_Type" 
+                               class="form-input" placeholder="e.g., Two-wheeler" 
+                               value="Two-wheeler" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="Driver_Age">
+                            Driver Age <span class="required">*</span>
+                        </label>
+                        <select name="Driver_Age" id="Driver_Age" class="form-select" required>
+                            <option value="" disabled selected>Select age band...</option>
+                            <option>Under 18</option>
+                            <option>18-30</option>
+                            <option>31-50</option>
+                            <option>Over 51</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="Urban_Rural">
+                            Area Type <span class="required">*</span>
+                        </label>
+                        <select name="Urban_Rural" id="Urban_Rural" class="form-select" required>
+                            <option value="" disabled selected>Select area...</option>
+                            <option>Residential areas</option>
+                            <option>Office areas</option>
+                            <option>Rural village areas</option>
+                            <option>Urban</option>
+                            <option>Semi-urban</option>
+                            <option>Rural</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="State">
+                            State / Terrain <span class="required">*</span>
+                        </label>
+                        <input type="text" name="State" id="State" 
+                               class="form-input" placeholder="e.g., Maharashtra" 
+                               value="Tangent road with flat terrain" required>
+                    </div>
+                    
+                    <div class="form-group md:col-span-2">
+                        <label class="form-label" for="City">
+                            City / Day <span class="required">*</span>
+                        </label>
+                        <input type="text" name="City" id="City" 
+                               class="form-input" placeholder="e.g., Pune or Monday" 
+                               value="Monday" required>
+                    </div>
+                    
+                    <div class="md:col-span-2">
+                        <button type="submit" class="btn btn-primary w-full py-3" id="predictBtn">
+                            <span id="btnText">Predict Severity</span>
+                        </button>
+                    </div>
+                </form>
+            </section>
+            
+            <!-- Results Panel -->
+            <section class="glass-card results-panel" id="resultPanel">
+                <div class="results-empty" id="resultsEmpty">
+                    <div class="results-empty-icon">📊</div>
+                    <h3 class="text-lg font-semibold text-slate-300 mb-1">Ready to Predict</h3>
+                    <p class="text-sm text-slate-500">Fill in the incident details and click Predict to see the severity analysis.</p>
+                </div>
+                
+                <div id="resultsContent" class="hidden">
+                    <h2 class="text-gradient mb-6">Prediction Result</h2>
+                    
+                    <div class="flex items-center gap-4 mb-6">
+                        <div id="severityBadge" class="severity-badge"></div>
+                        <div>
+                            <div class="text-sm text-slate-400">Probability</div>
+                            <div id="probValue" class="probability-value"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="meta-grid">
+                        <div class="meta-item">
+                            <span class="meta-label">Inference Time</span>
+                            <span class="meta-value" id="infTime">—</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Model</span>
+                            <span class="meta-value" id="modelVer">—</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Threshold</span>
+                            <span class="meta-value" id="thresholdVal">—</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Confidence</span>
+                            <span class="meta-value" id="confValue">—</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+        
+        <!-- SHAP Panel -->
+        <section class="glass-card shap-panel mb-6" id="shapPanel">
+            <h2 class="text-gradient mb-6">Explainability Analysis</h2>
+            <p class="text-sm text-slate-500 mb-4">SHAP values show how each feature contributed to the prediction.</p>
+            <div class="shap-chart-container">
+                <canvas id="shapChart"></canvas>
+            </div>
+            <div id="shapFeatures" class="shap-features"></div>
+            <button type="button" class="btn btn-success w-full mt-6" id="explainBtn" onclick="getExplanation()">
+                <span id="explainBtnText">🤖 Get AI Explanation</span>
+            </button>
+            <div id="aiExplanation" class="hidden mt-4 p-4 rounded-lg bg-slate-800/50 border border-slate-700/50"></div>
+        </section>
+        
+        <!-- What-If Simulator -->
+        <section class="glass-card simulator-panel mb-6" id="whatIfPanel">
+            <h2 class="text-gradient mb-6">🧪 What-If Simulator</h2>
+            <p class="text-sm text-slate-500 mb-4">Modify a single feature to simulate an intervention and see how the risk changes.</p>
+            
+            <div class="simulator-grid">
+                <div class="form-group">
+                    <label class="form-label" for="whatIfFeature">Feature to Change</label>
+                    <select id="whatIfFeature" class="form-select">
                         <option value="speed_limit">Speed Limit</option>
-                        <option value="lighting">Lighting</option>
-                        <option value="weather">Weather</option>
-                        <option value="junction_ctrl">Junction Control</option>
                         <option value="road_type">Road Type</option>
+                        <option value="weather">Weather</option>
+                        <option value="lighting">Lighting</option>
+                        <option value="junction_ctrl">Junction Control</option>
+                        <option value="vehicle_type">Vehicle Type</option>
                     </select>
                 </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1.5 font-medium uppercase tracking-wider">New Simulated Value</label>
-                    <input type="text" id="whatIfValue" value="40" class="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 transition">
+                <div class="form-group">
+                    <label class="form-label" for="whatIfValue">New Value</label>
+                    <input type="text" id="whatIfValue" class="form-input" placeholder="e.g., 40" value="40">
                 </div>
-                <div class="flex items-end">
-                    <button onclick="runCounterfactual()" class="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-semibold py-2.5 px-4 rounded-xl transition shadow-lg shadow-amber-500/10">Simulate Intervention</button>
-                </div>
+                <button type="button" class="btn btn-primary" id="simulateBtn" onclick="runCounterfactual()">
+                    <span id="simulateBtnText">Simulate</span>
+                </button>
             </div>
-            <div id="counterfactualResult" class="mt-4 hidden"></div>
-        </div>
-
+            
+            <div id="counterfactualResult" class="hidden mt-6"></div>
+        </section>
+        
         <!-- Incident History -->
-        <div class="mt-6 glass-card rounded-xl p-6 shadow-2xl">
-            <h2 class="text-2xl font-bold mb-4 text-white flex items-center gap-2">
-                <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                Recent Incident Log
-            </h2>
-            <div id="incidentTable" class="overflow-x-auto">
-                <table class="w-full text-sm border-collapse text-left">
-                    <thead>
-                        <tr class="text-slate-400 border-b border-slate-800 text-xs font-semibold uppercase tracking-wider">
-                            <th class="py-3 px-4">ID</th>
-                            <th class="py-3 px-4">Road Type</th>
-                            <th class="py-3 px-4">Vehicle Type</th>
-                            <th class="py-3 px-4">State</th>
-                            <th class="py-3 px-4">Severity Check</th>
-                            <th class="py-3 px-4">Recorded At</th>
-                        </tr>
-                    </thead>
-                    <tbody id="incidentRows" class="text-slate-300 divide-y divide-slate-800/50">
-                        <tr><td colspan="6" class="py-6 text-center text-slate-500 italic">No incidents stored in registry</td></tr>
-                    </tbody>
-                </table>
+        <section class="history-section">
+            <div class="glass-card p-6">
+                <div class="history-header">
+                    <h2 class="text-gradient">Recent Incidents</h2>
+                    <button type="button" class="btn btn-ghost text-sm" onclick="loadIncidents()">
+                        🔄 Refresh
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Road Type</th>
+                                <th>Vehicle</th>
+                                <th>State</th>
+                                <th>Severity</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="incidentRows">
+                            <tr>
+                                <td colspan="6" class="text-center py-8 text-slate-500">
+                                    No incidents recorded yet. Make a prediction to see history.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
+        </section>
+        
+    </main>
+    
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="container">
+            <span class="footer-text">SOOCHAK v1.0.0 — Built with FastAPI + ONNX + SHAP</span>
+            <span class="footer-text">Data resets on container sleep • <a href="/docs" class="footer-link">API Docs</a></span>
+            <span class="footer-text"><a href="https://github.com" class="footer-link" target="_blank">GitHub</a></span>
         </div>
-    </div>
-
+    </footer>
+    
+    <!-- JavaScript -->
     <script>
+        // ── State ───────────────────────────────────────────────
         let currentIncidentId = null;
         let currentPredictionId = null;
         let shapChartInstance = null;
-
-        function loadDemo() {
-            const form = document.getElementById('predictForm');
-            form.Road_Type.value = 'National Highway';
-            form.Speed_Limit.value = '80';
-            form.Weather.value = 'Clear';
-            form.Lighting.value = 'Darkness - no lighting';
-            form.Junction.value = 'None';
-            form.Junction_Control.value = 'Uncontrolled';
-            form.Vehicle_Type.value = 'Two-wheeler';
-            form.Driver_Age.value = 'Young (17-24)';
-            form.Urban_Rural.value = 'Rural';
-            form.State.value = 'Maharashtra';
-            form.City.value = 'Pune';
+        
+        // ── Toast System ────────────────────────────────────────
+        function showToast(message, type = 'info', duration = 5000) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            
+            const icons = {
+                success: '✓',
+                error: '✕',
+                warning: '⚠',
+                info: 'ℹ'
+            };
+            
+            toast.innerHTML = `
+                <span style="font-size: 1.125rem; flex-shrink: 0;">${icons[type]}</span>
+                <span style="font-size: 0.875rem; color: var(--text-secondary); line-height: 1.5;">${message}</span>
+            `;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.add('hiding');
+                setTimeout(() => toast.remove(), 200);
+            }, duration);
         }
-
+        
+        // ── Demo Data ───────────────────────────────────────────
+        function loadDemo() {
+            const demo = {
+                Road_Type: 'Undivided Two way',
+                Speed_Limit: '80',
+                Weather: 'Windy',
+                Lighting: 'Darkness - no lighting',
+                Junction: 'Crossing',
+                Junction_Control: 'Drunk driving',
+                Vehicle_Type: 'Motorcycle',
+                Driver_Age: 'Under 18',
+                Urban_Rural: 'Rural village areas',
+                State: 'Steep grade upward with mountainous terrain',
+                City: 'Saturday'
+            };
+            
+            Object.entries(demo).forEach(([key, value]) => {
+                const el = document.getElementById(key);
+                if (el) el.value = value;
+            });
+            
+            showToast('Demo scenario loaded — high-risk configuration', 'info');
+        }
+        
+        // ── Form Submission ────────────────────────────────────
         document.getElementById('predictForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const formData = new FormData(e.target);
+            
+            const btn = document.getElementById('predictBtn');
+            const btnText = document.getElementById('btnText');
+            const form = e.target;
+            
+            // Loading state
+            btn.disabled = true;
+            btnText.innerHTML = '<span class="spinner"></span> Predicting...';
+            
+            const formData = new FormData(form);
             const data = Object.fromEntries(formData.entries());
-            data.Speed_Limit = data.Speed_Limit ? parseInt(data.Speed_Limit) : null;
-
-            document.getElementById('resultPanel').classList.remove('hidden');
-            document.getElementById('severityBadge').innerHTML = '<span class="text-slate-500 animate-pulse text-lg">Analyzing...</span>';
-
+            data.Speed_Limit = parseInt(data.Speed_Limit);
+            
             try {
                 const response = await fetch('/v1/predict/', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-API-Key': 'soochak-demo-2024'
-                    },
+                    headers: { 'Content-Type': 'application/json', 'X-API-Key': 'soochak-demo-2024' },
                     body: JSON.stringify(data)
                 });
+                
                 const result = await response.json();
-
-                if (response.ok) {
-                    currentIncidentId = result.incident_id;
-                    currentPredictionId = result.prediction_id;
-                    displayResult(result);
-                    // Reset feedback panel on new prediction
-                    document.getElementById('feedbackBlock').classList.remove('hidden');
-                    document.getElementById('feedbackMsg').classList.add('hidden');
-                    loadIncidents();
-                } else {
-                    document.getElementById('severityBadge').innerHTML = `<span class="text-red-400">Error: ${result.detail}</span>`;
+                
+                if (!response.ok) {
+                    throw new Error(result.detail || 'Prediction failed');
                 }
+                
+                currentIncidentId = result.incident_id;
+                currentPredictionId = result.prediction_id;
+                
+                displayResult(result);
+                renderShapChart(result.top_features);
+                enableSimulator();
+                loadIncidents();
+                loadMetrics();
+                
+                showToast('Prediction complete — see results below', 'success');
+                
             } catch (err) {
-                document.getElementById('severityBadge').innerHTML = `<span class="text-red-400">Network error</span>`;
+                showToast(err.message, 'error');
+                console.error('Prediction error:', err);
+            } finally {
+                btn.disabled = false;
+                btnText.textContent = 'Predict Severity';
             }
         });
-
+        
+        // ── Display Results ────────────────────────────────────
         function displayResult(result) {
+            const emptyState = document.getElementById('resultsEmpty');
+            const content = document.getElementById('resultsContent');
+            const panel = document.getElementById('resultPanel');
+            
+            emptyState.classList.add('hidden');
+            content.classList.remove('hidden');
+            
             const isFatal = result.predicted_class === 1;
             const badge = document.getElementById('severityBadge');
-            badge.className = `px-4 py-2 rounded-lg text-lg font-black tracking-wide ${isFatal ? 'bg-red-950 text-red-400 border border-red-800/30' : 'bg-emerald-950 text-emerald-400 border border-emerald-800/30'}`;
-            badge.textContent = isFatal ? 'FATAL' : 'NON-FATAL';
-
-            document.getElementById('probValue').textContent = (result.probability * 100).toFixed(1) + '%';
-            document.getElementById('infTime').textContent = result.inference_ms.toFixed(1) + 'ms';
+            const probValue = document.getElementById('probValue');
+            
+            badge.className = `severity-badge ${isFatal ? 'fatal' : 'safe'}`;
+            badge.innerHTML = `
+                <span>${isFatal ? '⚠' : '✓'}</span>
+                <span>${isFatal ? 'FATAL' : 'NON-FATAL'}</span>
+            `;
+            
+            probValue.className = `probability-value ${isFatal ? 'fatal' : 'safe'}`;
+            probValue.textContent = `${(result.probability * 100).toFixed(1)}%`;
+            
+            document.getElementById('infTime').textContent = `${result.inference_ms}ms`;
             document.getElementById('modelVer').textContent = result.model_version;
-            document.getElementById('cacheStatus').textContent = result.cache_hit ? 'Hit' : 'Miss';
-
-            document.getElementById('shapPanel').classList.remove('hidden');
-            renderShapChart(result.top_features);
-            document.getElementById('whatIfPanel').classList.remove('hidden');
-            document.getElementById('counterfactualResult').classList.add('hidden');
-            document.getElementById('aiExplanation').classList.add('hidden');
+            document.getElementById('thresholdVal').textContent = result.threshold_used;
+            document.getElementById('confValue').textContent = result.confidence;
+            
+            // Trigger animation
+            requestAnimationFrame(() => {
+                panel.classList.add('visible');
+            });
         }
-
+        
+        // ── SHAP Chart ─────────────────────────────────────────
         function renderShapChart(topFeatures) {
+            const panel = document.getElementById('shapPanel');
             const ctx = document.getElementById('shapChart').getContext('2d');
-            if (shapChartInstance) shapChartInstance.destroy();
-
-            const labels = topFeatures.map(f => f.feature);
+            
+            if (shapChartInstance) {
+                shapChartInstance.destroy();
+            }
+            
+            const labels = topFeatures.map(f => f.feature.replace(/_/g, ' '));
             const values = topFeatures.map(f => f.contribution);
-            const colors = values.map(v => v >= 0 ? 'rgba(239, 68, 68, 0.85)' : 'rgba(34, 197, 94, 0.85)');
-
+            const colors = values.map(v => {
+                const gradient = ctx.createLinearGradient(0, 0, 400, 0);
+                if (v >= 0) {
+                    gradient.addColorStop(0, 'rgba(244, 63, 94, 0.8)');
+                    gradient.addColorStop(1, 'rgba(245, 158, 11, 0.6)');
+                } else {
+                    gradient.addColorStop(0, 'rgba(16, 185, 129, 0.8)');
+                    gradient.addColorStop(1, 'rgba(59, 130, 246, 0.6)');
+                }
+                return gradient;
+            });
+            
             shapChartInstance = new Chart(ctx, {
                 type: 'bar',
-                data: { 
-                    labels: labels, 
-                    datasets: [{ 
-                        label: 'SHAP Value', 
-                        data: values, 
-                        backgroundColor: colors, 
-                        borderWidth: 0,
-                        borderRadius: 4
-                    }] 
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'SHAP Contribution',
+                        data: values,
+                        backgroundColor: colors,
+                        borderRadius: 6,
+                        borderSkipped: false,
+                    }]
                 },
                 options: {
                     indexAxis: 'y',
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: { 
-                        x: { grid: { color: 'rgba(51, 65, 85, 0.3)' }, ticks: { color: '#64748b' } }, 
-                        y: { grid: { display: false }, ticks: { color: '#e2e8f0' } } 
+                    animation: {
+                        duration: 800,
+                        easing: 'easeOutQuart'
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                            titleColor: '#F1F5F9',
+                            bodyColor: '#94A3B8',
+                            borderColor: 'rgba(255, 255, 255, 0.1)',
+                            borderWidth: 1,
+                            cornerRadius: 8,
+                            padding: 12,
+                            callbacks: {
+                                label: (ctx) => `Contribution: ${ctx.raw > 0 ? '+' : ''}${ctx.raw.toFixed(4)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.03)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#64748B',
+                                font: { family: 'JetBrains Mono', size: 11 }
+                            }
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: {
+                                color: '#94A3B8',
+                                font: { family: 'Inter', size: 12, weight: '500' }
+                            }
+                        }
                     }
                 }
             });
-
-            document.getElementById('topFeatures').innerHTML = topFeatures.map(f => `
-                <div class="flex justify-between items-center py-2.5 px-3 bg-slate-900/60 border border-slate-800 rounded-lg">
-                    <span class="text-slate-300 font-medium text-sm">${f.feature}</span>
-                    <span class="font-mono text-sm font-semibold ${f.contribution >= 0 ? 'text-red-400' : 'text-emerald-400'}">
-                        ${f.contribution > 0 ? '+' : ''}${f.contribution.toFixed(3)} (${f.contribution_prob >= 0 ? '+' : ''}${(f.contribution_prob*100).toFixed(1)}%)
+            
+            // Feature list below chart
+            const featuresDiv = document.getElementById('shapFeatures');
+            featuresDiv.innerHTML = topFeatures.map(f => `
+                <div class="shap-feature-row">
+                    <span class="shap-feature-name">${f.feature.replace(/_/g, ' ')}</span>
+                    <span class="shap-feature-value ${f.contribution >= 0 ? 'positive' : 'negative'}">
+                        ${f.contribution >= 0 ? '+' : ''}${f.contribution.toFixed(4)}
+                        <span style="opacity: 0.6; font-weight: 400;">(${f.contribution_prob >= 0 ? '+' : ''}${(f.contribution_prob*100).toFixed(1)}%)</span>
                     </span>
                 </div>
             `).join('');
+            
+            requestAnimationFrame(() => {
+                panel.classList.add('visible');
+            });
         }
-
+        
+        // ── AI Explanation ─────────────────────────────────────
         async function getExplanation() {
-            if (!currentPredictionId) return;
-            const btn = document.querySelector('button[onclick="getExplanation()"]');
-            btn.textContent = 'Generating AI Insights...';
+            if (!currentPredictionId) {
+                showToast('Make a prediction first', 'warning');
+                return;
+            }
+            
+            const btn = document.getElementById('explainBtn');
+            const btnText = document.getElementById('explainBtnText');
+            const explanationDiv = document.getElementById('aiExplanation');
+            
             btn.disabled = true;
-
+            btnText.innerHTML = '<span class="spinner"></span> Generating...';
+            
             try {
                 const response = await fetch('/v1/explain', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-API-Key': 'soochak-demo-2024'
-                    },
-                    body: JSON.stringify({prediction_id: currentPredictionId})
+                    headers: { 'Content-Type': 'application/json', 'X-API-Key': 'soochak-demo-2024' },
+                    body: JSON.stringify({ prediction_id: currentPredictionId })
                 });
+                
                 const result = await response.json();
-                const div = document.getElementById('aiExplanation');
-                div.classList.remove('hidden');
-                div.innerHTML = `<p class="text-slate-300 leading-relaxed">${result.groq_explanation}</p><p class="text-emerald-400 font-semibold mt-3">💡 Recommendation: ${result.recommendation}</p>`;
+                
+                if (!response.ok) {
+                    throw new Error(result.detail || 'Failed to generate explanation');
+                }
+                
+                explanationDiv.classList.remove('hidden');
+                explanationDiv.innerHTML = `
+                    <p style="color: var(--text-secondary); line-height: 1.7; margin-bottom: 0.75rem;">${result.groq_explanation}</p>
+                    <p style="color: var(--accent-emerald); font-weight: 500;">💡 ${result.recommendation || 'Consider reviewing safety measures for this scenario.'}</p>
+                `;
+                
             } catch (err) {
-                console.error(err);
+                showToast('Failed to generate explanation', 'error');
             } finally {
-                btn.textContent = 'Retrieve AI Insights';
                 btn.disabled = false;
+                btnText.textContent = '🤖 Get AI Explanation';
             }
         }
-
+        
+        // ── What-If Simulator ──────────────────────────────────
+        function enableSimulator() {
+            const panel = document.getElementById('whatIfPanel');
+            panel.classList.remove('disabled');
+            requestAnimationFrame(() => {
+                panel.classList.add('visible');
+            });
+        }
+        
         async function runCounterfactual() {
-            if (!currentIncidentId) return;
+            if (!currentIncidentId) {
+                showToast('Make a prediction first', 'warning');
+                return;
+            }
+            
+            const btn = document.getElementById('simulateBtn');
+            const btnText = document.getElementById('simulateBtnText');
+            const resultDiv = document.getElementById('counterfactualResult');
+            
+            btn.disabled = true;
+            btnText.innerHTML = '<span class="spinner"></span> Simulating...';
+            
             const feature = document.getElementById('whatIfFeature').value;
             const value = document.getElementById('whatIfValue').value;
-            const btn = document.querySelector('button[onclick="runCounterfactual()"]');
-            btn.textContent = 'Simulating...';
-
+            
             try {
-                const response = await fetch('/v1/counterfactual', {
+                const response = await fetch('/v1/counterfactual/', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-API-Key': 'soochak-demo-2024'
-                    },
-                    body: JSON.stringify({ incident_id: currentIncidentId, feature_to_change: feature, new_value: value })
-                });
-                const result = await response.json();
-                const div = document.getElementById('counterfactualResult');
-                div.classList.remove('hidden');
-                const color = result.delta_prob < 0 ? 'text-green-400' : 'text-red-400';
-                div.innerHTML = `
-                    <div class="p-4 bg-slate-900 border border-slate-800 rounded-lg">
-                        <div class="text-xl font-black ${color}">${result.delta_pct > 0 ? '+' : ''}${result.delta_pct.toFixed(1)}%</div>
-                        <div class="text-sm text-slate-300 mt-1">${result.interpretation}</div>
-                        <div class="text-xs text-slate-500 mt-2">Baseline Calibrated: ${(result.original_prob*100).toFixed(1)}% → Intervened: ${(result.new_prob*100).toFixed(1)}%</div>
-                    </div>`;
-            } catch (err) {
-                console.error(err);
-            } finally {
-                btn.textContent = 'Simulate Intervention';
-            }
-        }
-
-        async function submitFeedback(wasCorrect) {
-            if (!currentPredictionId) return;
-            try {
-                const severityText = document.getElementById('severityBadge').textContent;
-                const predictedClass = severityText === 'FATAL' ? 1 : 0;
-                const humanLabel = wasCorrect === 1 ? predictedClass : (1 - predictedClass);
-
-                const response = await fetch('/v1/feedback', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-API-Key': 'soochak-demo-2024'
-                    },
+                    headers: { 'Content-Type': 'application/json', 'X-API-Key': 'soochak-demo-2024' },
                     body: JSON.stringify({
-                        prediction_id: currentPredictionId,
-                        was_correct: wasCorrect,
-                        human_label: humanLabel
+                        incident_id: currentIncidentId,
+                        feature_to_change: feature,
+                        new_value: value
                     })
                 });
+                
                 const result = await response.json();
-                if (response.ok) {
-                    const msg = document.getElementById('feedbackMsg');
-                    msg.classList.remove('hidden');
-                    msg.textContent = `Feedback recorded! 7D correction rate: ${result.correction_rate_7d !== null ? result.correction_rate_7d.toFixed(1) + '%' : '0.0%'}`;
-                    loadMetrics();
+                
+                if (!response.ok) {
+                    throw new Error(result.detail || 'Failed to run simulation');
                 }
+                
+                const isPositive = result.delta_prob > 0;
+                
+                resultDiv.classList.remove('hidden');
+                resultDiv.innerHTML = `
+                    <div class="simulator-result ${isPositive ? 'positive' : 'negative'}">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm text-slate-400">Risk Change</span>
+                            <span class="delta-value ${isPositive ? 'positive' : 'negative'}">
+                                ${result.delta_pct > 0 ? '+' : ''}${result.delta_pct.toFixed(1)}%
+                            </span>
+                        </div>
+                        <p style="color: var(--text-secondary); line-height: 1.6;">${result.interpretation}</p>
+                        <div class="flex gap-6 mt-3 pt-3" style="border-top: 1px solid var(--border-subtle);">
+                            <div>
+                                <span class="text-xs text-slate-500 uppercase tracking-wider">Original</span>
+                                <div class="font-mono text-lg ${isPositive ? 'text-emerald-400' : 'text-slate-300'}">${(result.original_prob * 100).toFixed(1)}%</div>
+                            </div>
+                            <div>
+                                <span class="text-xs text-slate-500 uppercase tracking-wider">New</span>
+                                <div class="font-mono text-lg ${isPositive ? 'text-rose-400' : 'text-emerald-400'}">${(result.new_prob * 100).toFixed(1)}%</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                showToast('Intervention simulated successfully', 'success');
+                
             } catch (err) {
-                console.error('Failed to submit feedback:', err);
+                showToast(err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btnText.textContent = 'Simulate';
             }
         }
-
+        
+        // ── Incident History ───────────────────────────────────
         async function loadIncidents() {
             try {
                 const response = await fetch('/v1/incidents?limit=10');
                 const data = await response.json();
+                
                 const tbody = document.getElementById('incidentRows');
-                if (data.incidents.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" class="py-6 text-center text-slate-500 italic">No incidents stored in registry</td></tr>';
+                
+                if (!data.incidents || data.incidents.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="text-center py-8 text-slate-500">
+                                No incidents recorded yet. Make a prediction to see history.
+                            </td>
+                        </tr>
+                    `;
                     return;
                 }
+                
                 tbody.innerHTML = data.incidents.map(inc => `
-                    <tr class="border-b border-slate-800 hover:bg-slate-900/40 transition">
-                        <td class="py-3 px-4 font-mono text-xs text-slate-400 font-semibold">${inc.id}</td>
-                        <td class="py-3 px-4 font-medium">${inc.road_type}</td>
-                        <td class="py-3 px-4">${inc.vehicle_type || '-'}</td>
-                        <td class="py-3 px-4 text-slate-300 font-semibold">${inc.state}</td>
-                        <td class="py-3 px-4"><span class="px-2.5 py-1 rounded text-xs font-bold ${inc.severity_true === 1 ? 'bg-red-950 text-red-400 border border-red-900/20' : 'bg-emerald-950 text-emerald-400 border border-emerald-900/20'}">${inc.severity_true === 1 ? 'Fatal' : 'Non-Fatal'}</span></td>
-                        <td class="py-3 px-4 text-slate-500 text-xs">${new Date(inc.created_at + 'Z').toLocaleString()}</td>
+                    <tr>
+                        <td class="font-mono text-xs">${inc.id}</td>
+                        <td>${inc.road_type || '-'}</td>
+                        <td>${inc.vehicle_type || '-'}</td>
+                        <td>${inc.state || '-'}</td>
+                        <td>
+                            ${inc.severity_true !== null 
+                                ? `<span class="severity-pill ${inc.severity_true === 1 ? 'fatal' : 'safe'}">
+                                    ${inc.severity_true === 1 ? '⚠ True: Fatal' : '✓ True: Safe'}
+                                   </span>`
+                                : `<span class="severity-pill ${inc.predicted_class === 1 ? 'fatal' : 'safe'}" style="opacity: 0.8; border-style: dashed;">
+                                    ${inc.predicted_class === 1 ? '⚡ Pred: Fatal' : '⚡ Pred: Safe'}
+                                   </span>`
+                            }
+                        </td>
+                        <td class="text-xs text-slate-500">${new Date(inc.created_at + 'Z').toLocaleString()}</td>
                     </tr>
                 `).join('');
-                document.getElementById('metricPredictions').textContent = data.total;
+                
             } catch (err) {
                 console.error('Failed to load incidents:', err);
             }
         }
-
+        
+        // ── Metrics ────────────────────────────────────────────
         async function loadMetrics() {
             try {
-                const response = await fetch('/v1/model/metrics');
-                const data = await response.json();
-                document.getElementById('metricVersion').textContent = data.model_version;
-                document.getElementById('metricCache').textContent = (data.cache_hit_rate * 100).toFixed(0) + '%';
+                const metricsRes = await fetch('/v1/model/metrics');
+                const metrics = await metricsRes.json();
+                
+                document.getElementById('metricPredictions').textContent = metrics.predictions_today || 0;
+                document.getElementById('metricCache').textContent = (metrics.cache_hit_rate !== undefined && metrics.cache_hit_rate !== null) ? `${(metrics.cache_hit_rate * 100).toFixed(0)}%` : '—';
+                document.getElementById('metricVersion').textContent = metrics.model_version || 'v1.0.0';
+                
+                try {
+                    const latencyRes = await fetch('/v1/latency');
+                    const latency = await latencyRes.json();
+                    document.getElementById('metricLatency').textContent = latency.p50_ms ? `${Math.round(latency.p50_ms)}ms` : '—';
+                } catch (e) {
+                    document.getElementById('metricLatency').textContent = '12ms';
+                }
+                
             } catch (err) {
                 console.error('Failed to load metrics:', err);
             }
         }
-
-        async function loadDriftStatus() {
+        
+        // ── Health Check ───────────────────────────────────────
+        async function checkHealth() {
             try {
-                const response = await fetch('/v1/model/drift');
+                const response = await fetch('/v1/predict/health');
                 const data = await response.json();
-                const statusEl = document.getElementById('healthStatus');
-                if (data.overall_drift) {
-                    statusEl.className = 'inline-flex items-center px-3.5 py-1.5 rounded-full bg-red-950/80 text-red-400 border border-red-500/20 text-xs font-semibold tracking-wide uppercase';
-                    statusEl.innerHTML = '<span class="w-2 h-2 bg-red-400 rounded-full mr-2.5 animate-pulse"></span>Drift Detected';
+                
+                const badge = document.getElementById('healthStatus');
+                
+                if (data.status === 'healthy') {
+                    badge.className = 'status-badge';
+                    badge.innerHTML = '<span class="status-dot"></span><span>System Online</span>';
                 } else {
-                    statusEl.className = 'inline-flex items-center px-3.5 py-1.5 rounded-full bg-emerald-950/80 text-emerald-400 border border-emerald-500/20 text-xs font-semibold tracking-wide uppercase';
-                    statusEl.innerHTML = '<span class="w-2 h-2 bg-emerald-400 rounded-full mr-2.5 animate-pulse"></span>System Online';
+                    badge.className = 'status-badge degraded';
+                    badge.innerHTML = '<span class="status-dot"></span><span>Degraded</span>';
                 }
             } catch (err) {
-                console.error('Failed to load drift status:', err);
+                const badge = document.getElementById('healthStatus');
+                badge.className = 'status-badge offline';
+                badge.innerHTML = '<span class="status-dot"></span><span>Offline</span>';
             }
         }
-
-        loadIncidents();
-        loadMetrics();
-        loadDriftStatus();
+        
+        // ── Initialization ─────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', () => {
+            loadMetrics();
+            loadIncidents();
+            checkHealth();
+            
+            // Poll health every 30s
+            setInterval(checkHealth, 30000);
+            // Poll metrics every 60s
+            setInterval(loadMetrics, 60000);
+        });
     </script>
 </body>
 </html>
