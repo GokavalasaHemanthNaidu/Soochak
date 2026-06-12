@@ -47,9 +47,9 @@ async def list_incidents(
         total = (await cursor.fetchone())[0]
 
     offset = (page - 1) * limit
-    sql = f"""SELECT i.*, p.predicted_class 
-              FROM incidents i 
-              LEFT JOIN predictions p ON i.id = p.incident_id 
+    sql = f"""SELECT i.*, p.predicted_class
+              FROM incidents i
+              LEFT JOIN predictions p ON i.id = p.incident_id
               {where_clause}
               ORDER BY i.created_at DESC LIMIT ? OFFSET ?"""
     async with db.execute(sql, params + [limit, offset]) as cursor:

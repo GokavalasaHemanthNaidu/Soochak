@@ -57,17 +57,25 @@ async def predict(
     # Check for identical existing incident
     cursor = await db.execute(
         """
-        SELECT id FROM incidents WHERE 
+        SELECT id FROM incidents WHERE
             road_type IS ? AND speed_limit IS ? AND weather IS ? AND lighting IS ? AND
             junction IS ? AND junction_ctrl IS ? AND vehicle_type IS ? AND driver_age IS ? AND
             urban_rural IS ? AND state IS ? AND city IS ?
         ORDER BY created_at DESC LIMIT 1
         """,
         (
-            request.Road_Type, request.Speed_Limit, request.Weather, request.Lighting,
-            request.Junction, request.Junction_Control, request.Vehicle_Type, request.Driver_Age,
-            request.Urban_Rural, request.State, request.City
-        )
+            request.Road_Type,
+            request.Speed_Limit,
+            request.Weather,
+            request.Lighting,
+            request.Junction,
+            request.Junction_Control,
+            request.Vehicle_Type,
+            request.Driver_Age,
+            request.Urban_Rural,
+            request.State,
+            request.City,
+        ),
     )
     existing_incident = await cursor.fetchone()
 
