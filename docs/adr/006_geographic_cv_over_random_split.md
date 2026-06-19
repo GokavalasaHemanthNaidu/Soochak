@@ -4,11 +4,14 @@
 Accepted
 
 ## Context
-Road infrastructure varies massively between Indian states.
+Road infrastructure, speed limits, and driving behavior vary massively between Indian states.
+A random split would leak state-specific patterns into the test set (data leakage).
 
 ## Decision
-Train on 5 states, test on Delhi holdout.
+Train on 5 states, test on Delhi holdout (unseen geography).
 
 ## Consequences
-- Positive: Proves generalization across geographies
-- Negative: Harder to implement, requires state-aware data pipeline
+- Positive: Proves generalization across geographies; no state-level data leakage
+- Negative: Harder to implement; requires state-aware stratified sampling
+- Interview answer: "Random split would let the model memorize Delhi road patterns during training,
+  inflating test F1. Geographic CV gives honest out-of-distribution performance."

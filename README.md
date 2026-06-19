@@ -13,6 +13,26 @@ SOOCHAK predicts fatal road accidents using real India FIR data, explains the pr
 
 ---
 
+## 📊 Model Performance
+
+Trained on Indian FIR road accident data. Evaluated on **Delhi geographic holdout** (unseen state).
+
+| Metric | Value |
+|--------|-------|
+| ROC-AUC | 0.72 |
+| F1 Score (Fatal class) | 0.47 |
+| Recall (Fatal) | 0.62 |
+| Decision Threshold | 0.18 (F1-optimal) |
+| Fatal Base Rate | 15.4% |
+| Training States | 5 Indian states |
+| Test State | Delhi (holdout) |
+
+**Why F1 0.47?** Indian FIR data has 15–30% missing values and weak feature coverage. High recall (0.62) is intentional — missing a fatal is worse than a false alarm. The value of this project is in **SHAP explainability and what-if simulation**, not raw classification accuracy.
+
+**Calibration:** Raw XGBoost outputs ~0.52 probability (overconfident). Isotonic calibration corrects this to ~0.20, matching the true 15.4% base rate. Threshold 0.18 captures the upper tail of risk.
+
+---
+
 ## 🔒 Security & Quality (20/20 PASS)
 - Strictly **NO SECRETS** committed (`.env` is fully blocked).
 - 100% Pydantic validation on all incoming data.
@@ -31,7 +51,7 @@ This application uses **SQLite** in WAL mode for zero-infrastructure deployment.
 ---
 
 ## 🏗️ Architecture
-*Architecture diagram / ADRs placeholder*
+[See Architecture Document](docs/architecture.md)
 
 ### ML Inference & Calibration
 The isotonic calibrator corrects systematic overconfidence from the XGBoost model. Raw probabilities of ~0.60 are calibrated down to ~0.21, reflecting the true 15.4% base rate of the dataset. The optimal decision threshold of `0.18` maximizes F1 on the hold-out calibration set.
