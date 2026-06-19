@@ -1,6 +1,21 @@
-# SOOCHAK: Explainable Road Accident Severity Predictor + Intervention Simulator
+<div align="center">
 
-**Live Demo**: [https://soochak.onrender.com](https://soochak.onrender.com)
+<img src="https://img.shields.io/badge/Explainable%20AI-Accident%20Severity%20Predictor-8A2BE2?style=for-the-badge&logo=polestar&logoColor=white" alt="Soochak"/>
+
+# 🚨 SOOCHAK
+
+### *Explainable Road Accident Severity Predictor + Intervention Simulator*
+
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
+[![XGBoost](https://img.shields.io/badge/XGBoost-Gradient%20Boosting-000000?style=flat-square&logo=xgboost&logoColor=white)]()
+[![SHAP](https://img.shields.io/badge/SHAP-Explainable%20AI-8A2BE2?style=flat-square)]()
+[![Status: Live](https://img.shields.io/badge/Status-Completed-9400D3?style=flat-square)]()
+
+**[🚀 Live Demo](https://soochak.onrender.com)** · **[🐛 Report Bug](https://github.com/GokavalasaHemanthNaidu/Soochak/issues)**
+
+</div>
+
+---
 
 SOOCHAK predicts fatal road accidents using real India FIR data, explains the predictions using SHAP, and simulates what-if interventions (e.g., adding a divider) to prevent them. Designed for a zero-cost Render deployment.
 
